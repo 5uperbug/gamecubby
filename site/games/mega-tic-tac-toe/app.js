@@ -1,27 +1,21 @@
-import { animate, stagger, utils } from '../vendor/animejs/anime.esm.min.js';
 import {
   X, O, DRAW, POSITION_NAMES, createGame, applyMove, playableBoards, isLegalMove,
   isBoardOpen, replay, undo as undoGame, boardsWon,
 } from './game.js';
-import { BoardView, createMark, ms, motion } from './board-view.js';
+import { BoardView } from './board-view.js';
+import { animate, ms, wait } from '../../shared/js/motion.js';
+import { createMark, svgEl } from '../../shared/js/marks.js';
+import {
+  confetti, openDialog, pop, reveal, shake,
+} from '../../shared/js/effects.js';
+import { createStore } from '../../shared/js/storage.js';
+import { initThemeToggle } from '../../shared/js/theme.js';
 
-// ----------------------------------------------------------------- storage
-
-const KEYS = { game: 'mttt.game', prefs: 'mttt.prefs', theme: 'mttt.theme' };
-
-const store = {
-  get(key) {
-    try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
-  },
-  set(key, value) {
-    try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* private mode */ }
-  },
-};
+const store = createStore('mega-tic-tac-toe');
 
 // ------------------------------------------------------------------- state
 
 const $ = (sel) => document.querySelector(sel);
-const wait = (t) => new Promise((resolve) => setTimeout(resolve, ms(t)));
 
 const ui = {
   mode: 'overview', // 'overview' | 'zoom'
@@ -33,11 +27,11 @@ const ui = {
   shown: { turn: null, hint: '', scores: { X: 0, O: 0 } },
 };
 
-let prefs = { autoZoom: false, ...store.get(KEYS.prefs) };
+let prefs = { autoZoom: false, ...store.get('prefs') };
 let state = loadGame();
 
 function loadGame() {
-  const saved = store.get(KEYS.game);
+  const saved = store.get('game');
   if (saved && Array.isArray(saved.moves)) {
     const moves = saved.moves
       .filter((m) => Array.isArray(m) && m.length === 2)
@@ -48,7 +42,7 @@ function loadGame() {
 }
 
 function saveGame() {
-  store.set(KEYS.game, { rules: state.rules, moves: state.history.map((m) => [m.board, m.cell]) });
+  store.set('game', { rules: state.rules, moves: state.history.map((m) => [m.board, m.cell]) });
 }
 
 const view = new BoardView($('#board'), { onBoard, onCell });
@@ -107,9 +101,7 @@ function refresh() {
     const n = boardsWon(state, p);
     const node = document.querySelector(`[data-score="${p}"]`);
     node.textContent = n;
-    if (ui.shown.scores[p] !== n && n > 0) {
-      animate(node.parentElement, { scale: [1.6, 1], duration: ms(700), ease: 'outElastic(1, .5)' });
-    }
+    if (ui.shown.scores[p] !== n && n > 0) pop(node.parentElement, 1.6);
     ui.shown.scores[p] = n;
   }
 
@@ -121,15 +113,11 @@ function refresh() {
     ui.shown.hint = hint;
   }
 
-  $('#rules-badge').textContent = state.rules.openBoards ? 'Rules: open boards variant' : 'Rules: classic';
+  $('#rules-note').textContent = state.rules.openBoards ? 'Rules: open boards variant' : 'Rules: classic';
   $('#btn-undo').disabled = ui.busy || !state.history.length;
   $('#btn-back').disabled = ui.busy || ui.mode !== 'zoom';
   $('#btn-confirm').disabled = ui.busy || !ui.pending;
   view.labelBoards(state, ui.mode === 'overview' ? playableBoards(state) : []);
-}
-
-function nudgeHint() {
-  animate('#hint', { x: [0, -5, 5, -3, 3, 0], duration: ms(400), ease: 'linear' });
 }
 
 // ------------------------------------------------------------------- flow
@@ -139,7 +127,7 @@ async function onBoard(b, how) {
   if (ui.busy || state.winner) return;
   if (!playableBoards(state).includes(b)) {
     view.shake(b);
-    nudgeHint();
+    shake($('#hint'));
     return;
   }
   await zoomIn(b);
@@ -294,10 +282,9 @@ function showResult() {
   const scoreO = boardsWon(state, O);
   markSvg.replaceChildren();
   if (state.winner === DRAW) {
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('class', 'draw-sign');
-    g.innerHTML = '<path d="M12 19h24"/><path d="M12 29h24"/>';
-    markSvg.appendChild(g);
+    const g = svgEl('g', { class: 'draw-sign' }, markSvg);
+    svgEl('path', { d: 'M12 19h24' }, g);
+    svgEl('path', { d: 'M12 29h24' }, g);
     $('#result-title').textContent = 'Draw';
     $('#result-detail').textContent = `Boards won: X ${scoreX} – ${scoreO} O · ${moves} moves`;
   } else {
@@ -323,39 +310,7 @@ async function hideResult(animated = true) {
   card.style.removeProperty('transform');
 }
 
-function confetti(host) {
-  if (motion.reduced) return;
-  host.replaceChildren();
-  const css = getComputedStyle(document.documentElement);
-  const colours = ['--x', '--o', '--focus'].map((v) => css.getPropertyValue(v).trim()).concat('#f5b82e');
-  const pieces = Array.from({ length: 44 }, (_, i) => {
-    const piece = document.createElement('i');
-    piece.style.background = colours[i % colours.length];
-    host.appendChild(piece);
-    return piece;
-  });
-  animate(pieces, {
-    x: () => utils.random(-190, 190),
-    y: [
-      { to: () => utils.random(-230, -90), duration: 600, ease: 'outCubic' },
-      { to: () => utils.random(140, 300), duration: 1100, ease: 'inQuad' },
-    ],
-    rotate: () => utils.random(-720, 720),
-    scale: [{ from: 0, to: () => utils.random(6, 12) / 10, duration: 250 }],
-    opacity: [{ to: 1, duration: 100 }, { to: 0, delay: 1200, duration: 400 }],
-    duration: 1700,
-    delay: stagger(12),
-    ease: 'outQuad',
-    onComplete: () => host.replaceChildren(),
-  });
-}
-
 // ----------------------------------------------------------------- dialogs
-
-function openDialog(dialog) {
-  dialog.showModal();
-  animate(dialog, { opacity: [0, 1], y: [28, 0], scale: [0.96, 1], duration: ms(420), ease: 'outBack(1.4)' });
-}
 
 const newDialog = $('#dlg-new');
 const newForm = newDialog.querySelector('form');
@@ -370,38 +325,11 @@ $('#btn-new').addEventListener('click', () => {
 newDialog.addEventListener('close', () => {
   if (newDialog.returnValue !== 'start') return;
   prefs = { ...prefs, autoZoom: newForm.autozoom.checked };
-  store.set(KEYS.prefs, prefs);
+  store.set('prefs', prefs);
   newGame({ openBoards: newForm.variant.value === 'open' });
 });
 
 $('#btn-rules').addEventListener('click', () => openDialog($('#dlg-rules')));
-
-// ------------------------------------------------------------------- theme
-
-function applyTheme(theme, { persist = true, animateIcon = true } = {}) {
-  document.documentElement.dataset.theme = theme;
-  if (persist) {
-    try { localStorage.setItem(KEYS.theme, theme); } catch { /* ignore */ }
-  }
-  const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
-  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', bg));
-  const btn = $('#btn-theme');
-  btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
-  btn.title = btn.getAttribute('aria-label');
-  if (animateIcon) {
-    animate(btn.querySelector('svg'), { rotate: [-120, 0], scale: [0.4, 1], duration: ms(600), ease: 'outBack(2)' });
-  }
-}
-
-$('#btn-theme').addEventListener('click', () => {
-  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
-});
-
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', (e) => {
-  let saved = null;
-  try { saved = localStorage.getItem(KEYS.theme); } catch { /* ignore */ }
-  if (!saved) applyTheme(e.matches ? 'dark' : 'light', { persist: false });
-});
 
 // ---------------------------------------------------------------- controls
 
@@ -433,15 +361,11 @@ document.addEventListener('keydown', (e) => {
 // -------------------------------------------------------------------- boot
 
 async function boot() {
-  applyTheme(document.documentElement.dataset.theme, { persist: false, animateIcon: false });
+  initThemeToggle($('#btn-theme'));
   view.sync(state);
   ui.busy = true;
   refresh();
-  const chrome = ['.topbar', '.status', '.controls'].map((s) => $(s));
-  animate(chrome, {
-    opacity: [0, 1], y: [-10, 0], duration: ms(500), delay: stagger(ms(90)), ease: 'outQuad',
-    onComplete: () => chrome.forEach((n) => n.style.removeProperty('transform')),
-  });
+  reveal(document.querySelectorAll('[data-reveal]'));
   await view.intro();
   await view.highlight(playableBoards(state), state.turn);
   ui.busy = false;

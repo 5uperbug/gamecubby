@@ -1,0 +1,328 @@
+/* Game Cubby base styles, loaded by every page: design tokens and light/dark
+   themes, header, buttons, dialogs, X/O marks and the entrance mechanism. */
+
+/* ------------------------------------------------------------------ tokens */
+
+:root {
+  color-scheme: light;
+  --bg: #f4f1ea;
+  --surface: #fffdf8;
+  --surface-2: #ece7dc;
+  --board: #fffdf8;
+  --sub-bg: #f6f2e9;
+  --ink: #1f2430;
+  --muted: #6a6f7c;
+  --line: #d3cbbb;
+  --line-strong: #353b4b;
+  --x: #e0533d;
+  --o: #2a6fd6;
+  --x-soft: #fbe3dd;
+  --o-soft: #dde8fa;
+  --focus: #7c4dff;
+  --shadow: 0 1px 2px rgb(40 30 10 / 0.06), 0 8px 28px rgb(40 30 10 / 0.08);
+  --shadow-lift: 0 2px 4px rgb(40 30 10 / 0.06), 0 18px 40px rgb(40 30 10 / 0.14);
+  --backdrop: rgb(30 25 15 / 0.35);
+  --turn: var(--x);
+  --turn-soft: var(--x-soft);
+  --radius: 14px;
+  --page-max: 1180px;
+  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1420;
+  --surface: #171e2c;
+  --surface-2: #222b3d;
+  --board: #161d2b;
+  --sub-bg: #1d2537;
+  --ink: #e9edf5;
+  --muted: #98a2b6;
+  --line: #36415a;
+  --line-strong: #c4ccdc;
+  --x: #ff6f5c;
+  --o: #57a3ff;
+  --x-soft: #3a2228;
+  --o-soft: #1c2c48;
+  --focus: #b39dff;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 30px rgb(0 0 0 / 0.35);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.35), 0 20px 44px rgb(0 0 0 / 0.5);
+  --backdrop: rgb(0 0 0 / 0.55);
+}
+
+/* Games colour accents by whose turn it is. */
+body.turn-o { --turn: var(--o); --turn-soft: var(--o-soft); }
+
+/* ------------------------------------------------------------------- base */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+button { font: inherit; color: inherit; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* ----------------------------------------------------------------- header */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  max-width: var(--page-max);
+  width: 100%;
+  margin: 0 auto;
+}
+
+.title-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.brand,
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  font-size: clamp(1.05rem, 0.9rem + 0.8vw, 1.4rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  color: inherit;
+  text-decoration: none;
+}
+
+.brand-text,
+.page-title-text { overflow: hidden; text-overflow: ellipsis; }
+
+.page-title-text span { color: var(--muted); font-weight: 700; }
+
+/* Small game icon next to the title, tinted with the colour of the player to move. */
+.title-icon {
+  width: 28px; height: 28px; flex: none;
+  fill: none; stroke: var(--turn); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;
+  transition: stroke 0.3s ease;
+}
+
+.top-actions { display: flex; gap: 6px; }
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0 10px;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.icon-btn:hover { background: var(--surface-2); }
+
+.icon-btn svg {
+  width: 22px; height: 22px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+
+.icon-btn svg .dot { fill: currentColor; }
+
+.back-link { padding: 0; }
+.back-link svg { stroke-width: 2.4; }
+
+.btn-label { display: none; }
+
+@media (min-width: 640px) {
+  .btn-label { display: inline; }
+  .icon-btn:has(.btn-label) { padding: 0 14px 0 10px; }
+}
+
+.theme-icon .moon { display: none; fill: currentColor; stroke: none; }
+:root[data-theme="dark"] .theme-icon .moon { display: inline; }
+:root[data-theme="dark"] .theme-icon .sun { display: none; }
+
+@media (max-width: 400px) {
+  .topbar { gap: 8px; }
+  .brand, .page-title { gap: 8px; font-size: 1rem; }
+  .title-icon { display: none; }
+  .top-actions { gap: 2px; }
+}
+
+/* ----------------------------------------------------------------- buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-weight: 700;
+  font-size: 0.98rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
+}
+
+.btn:hover:not(:disabled) { background: var(--surface-2); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
+
+.btn svg {
+  width: 20px; height: 20px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+}
+
+.btn.primary {
+  background: var(--turn);
+  color: #fff;
+}
+.btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--turn) 88%, #000); }
+.btn.primary:disabled { background: var(--surface-2); color: var(--muted); opacity: 1; }
+
+/* ----------------------------------------------------------------- dialogs */
+
+.sheet {
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 0;
+  border-radius: calc(var(--radius) + 6px);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow), 0 30px 80px rgb(0 0 0 / 0.25);
+}
+
+.sheet::backdrop {
+  background: var(--backdrop);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.sheet form { padding: 22px 20px 18px; }
+.sheet h2 { margin: 0 0 14px; font-size: 1.35rem; letter-spacing: -0.01em; }
+
+.sheet fieldset { border: 0; margin: 0 0 14px; padding: 0; display: grid; gap: 8px; }
+.sheet legend { padding: 0; margin-bottom: 8px; font-weight: 700; font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.choice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 2px solid var(--surface-2);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.choice:has(input:checked) { border-color: var(--turn); background: color-mix(in srgb, var(--turn-soft) 50%, var(--surface)); }
+.choice input { margin: 3px 0 0; accent-color: var(--turn); width: 18px; height: 18px; flex: none; }
+.choice span { display: grid; gap: 3px; }
+.choice small { color: var(--muted); font-size: 0.88rem; line-height: 1.35; }
+
+.toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 2px;
+  cursor: pointer;
+  line-height: 1.3;
+}
+.toggle input { position: absolute; opacity: 0; width: 44px; height: 26px; margin: 0; cursor: pointer; }
+.toggle-track {
+  position: relative;
+  flex: none;
+  width: 44px; height: 26px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  transition: background-color 0.2s ease;
+}
+.toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+  transition: transform 0.2s ease;
+}
+.toggle input:checked + .toggle-track { background: var(--turn); }
+.toggle input:checked + .toggle-track::after { transform: translateX(18px); }
+.toggle input:focus-visible + .toggle-track { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+.sheet-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.sheet-actions .btn { box-shadow: none; background: var(--surface-2); }
+.sheet-actions .btn.primary { background: var(--turn); }
+
+.sheet-text { line-height: 1.5; font-size: 0.97rem; }
+.sheet-text p { margin: 0 0 10px; }
+.sheet-text ol { margin: 0 0 12px; padding-left: 1.3em; display: grid; gap: 4px; }
+.sheet-text .note { color: var(--muted); font-size: 0.88rem; }
+
+/* ------------------------------------------------------------------- marks */
+
+.mark { transform-box: fill-box; transform-origin: center; }
+
+.mark path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mark-x path { stroke: var(--x); }
+.mark-o path { stroke: var(--o); }
+.line-x { stroke: var(--x); }
+.line-o { stroke: var(--o); }
+
+/* --------------------------------------------------------------- entrances */
+
+/* Hidden until effects.reveal() animates them in. If scripts never run, the
+   fallback animation shows them anyway after a moment. */
+.js [data-reveal] { animation: reveal-fallback 0.4s ease 1.5s both; }
+
+@keyframes reveal-fallback {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Cross-fade between pages where the browser supports it. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+  }
+}

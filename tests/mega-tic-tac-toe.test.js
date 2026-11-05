@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   X, O, DRAW, createGame, applyMove, playableBoards, isLegalMove,
   replay, undo, isGlobalWinStillPossible, boardsWon,
-} from '../js/game.js';
+} from '../site/games/mega-tic-tac-toe/game.js';
 
 const play = (state, ...moves) => {
   for (const [b, c] of moves) state = applyMove(state, b, c).state;

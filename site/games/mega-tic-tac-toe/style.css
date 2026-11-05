@@ -1,0 +1,115 @@
+/* Mega Tic-Tac-Toe board. Layout, header, buttons and dialogs come from
+   shared/css/base.css and shared/css/game-shell.css. */
+
+.sub-bg {
+  fill: var(--sub-bg);
+  transition: fill 0.35s ease;
+}
+
+.sub-grid line {
+  stroke: var(--line);
+  stroke-width: 1.1;
+  stroke-linecap: round;
+}
+
+.macro-grid path {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+
+.cell-hit {
+  fill: transparent;
+  stroke: transparent;
+  transition: fill 0.15s ease;
+}
+
+.cell .mark path { stroke-width: 3.3; }
+
+.mark.pending { opacity: 0.6; }
+
+.cell.last .cell-hit { fill: color-mix(in srgb, var(--line) 45%, transparent); }
+
+.sub-inner { transform-box: fill-box; transform-origin: center; }
+
+.sub-ring {
+  fill: none;
+  stroke: var(--turn);
+  stroke-width: 2.2;
+  opacity: 0;
+  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.sub.playable .sub-ring { opacity: 1; }
+#board[data-turn="o"] .sub-ring { stroke: var(--o); }
+#board[data-turn="x"] .sub-ring { stroke: var(--x); }
+
+/* Boards you cannot pick right now step back. */
+.sub-dim { transition: opacity 0.35s ease; }
+#board.has-playable:not(.zoomed) .sub:not(.playable) .sub-dim { opacity: 0.45; }
+
+.sub-focus {
+  fill: none;
+  stroke: var(--focus);
+  stroke-width: 2.5;
+  opacity: 0;
+  pointer-events: none;
+}
+.sub:focus-visible .sub-focus { opacity: 1; }
+.cell:focus-visible .cell-hit { stroke: var(--focus); stroke-width: 1.4; }
+
+/* Overview: whole boards are the targets. */
+#board:not(.zoomed) .sub { cursor: pointer; }
+#board:not(.zoomed) .cell { pointer-events: none; }
+#board:not(.zoomed) .sub.playable:hover .sub-ring { stroke-width: 3.4; }
+
+/* Zoomed: only cells of the active board respond. */
+#board.zoomed .sub:not(.active) { pointer-events: none; }
+#board.zoomed .sub.active .sub-bg { fill: var(--sub-bg); }
+#board.zoomed .sub.active .cell:not(.filled) { cursor: pointer; }
+#board.zoomed .sub.active .cell:not(.filled):hover .cell-hit {
+  fill: color-mix(in srgb, var(--turn-soft) 80%, transparent);
+}
+#board.zoomed .sub.active .cell.pending .cell-hit {
+  fill: color-mix(in srgb, var(--turn-soft) 100%, transparent);
+  stroke: var(--turn);
+  stroke-width: 0.8;
+  stroke-dasharray: 2 2;
+}
+
+/* Decided boards. */
+.sub-result { pointer-events: none; }
+.win-line, .game-line {
+  fill: none;
+  stroke-linecap: round;
+}
+.win-line { stroke-width: 2.4; }
+.big-mark path { stroke-width: 9; }
+
+.sub.won .cells, .sub.won .win-line { opacity: 0.22; }
+.sub.won .sub-grid line { opacity: 0.5; }
+.sub.won-x .sub-bg { fill: var(--x-soft); }
+.sub.won-o .sub-bg { fill: var(--o-soft); }
+
+.sub.drawn .cells { opacity: 0.35; }
+.sub.drawn .sub-bg { fill: url(#hatch); }
+.hatch-line { stroke: var(--line); stroke-width: 1.4; }
+
+/* Open-boards variant keeps won boards readable because they are still in play. */
+.rules-open .sub.won .cells { opacity: 0.85; }
+.rules-open .sub.won .win-line { opacity: 0.5; }
+.rules-open .sub.won .big-mark { opacity: 0.22; }
+.rules-open #board.zoomed .sub.won.active .big-mark { opacity: 0.1; }
+
+.game-line { stroke-width: 6; opacity: 0.9; }
+
+.fly {
+  fill: none;
+  stroke-width: 2.4;
+  pointer-events: none;
+}
+.fly-x { stroke: var(--x); fill: color-mix(in srgb, var(--x-soft) 50%, transparent); }
+.fly-o { stroke: var(--o); fill: color-mix(in srgb, var(--o-soft) 50%, transparent); }

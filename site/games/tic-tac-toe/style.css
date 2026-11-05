@@ -1,0 +1,43 @@
+/* Classic Tic-Tac-Toe board. Layout, header, buttons and dialogs come from
+   shared/css/base.css and shared/css/game-shell.css. */
+
+.grid path {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.cell-hit {
+  fill: transparent;
+  stroke: transparent;
+  transition: fill 0.15s ease;
+}
+
+.cell .mark path { stroke-width: 9; }
+
+#board.live .cell { cursor: pointer; }
+#board.live .cell:not(.filled):hover .cell-hit {
+  fill: color-mix(in srgb, var(--turn-soft) 80%, transparent);
+}
+.cell:focus-visible .cell-hit { stroke: var(--focus); stroke-width: 3; }
+
+.win-line {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+}
+
+/* Finished round: the winning three stay bright, everything else steps back. */
+#board.over .cell:not(.win) .mark { opacity: 0.25; }
+#board.over.drawn .cell .mark { opacity: 0.45; }
+
+/* Quiet until the round is over, then it becomes the obvious next step. */
+.btn.primary.quiet:not(:disabled) {
+  background: var(--surface);
+  color: inherit;
+}
+.btn.primary.quiet:hover:not(:disabled) { background: var(--surface-2); }
+
+/* Confetti bursts from the middle of the board. */
+.board-area .confetti { top: 50%; }

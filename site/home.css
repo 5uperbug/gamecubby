@@ -1,0 +1,163 @@
+/* Home page: the game picker. Shared tokens, header and buttons come from
+   shared/css/base.css. */
+
+:root { --page-max: 1040px; }
+
+.logo { width: 34px; height: 34px; flex: none; overflow: visible; }
+.logo-cell { fill: var(--surface-2); transform-box: fill-box; transform-origin: center; }
+.logo-x, .logo-o { fill: none; stroke-width: 2.6; stroke-linecap: round; }
+.logo-x { stroke: var(--x); }
+.logo-o { stroke: var(--o); }
+
+.home {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 0 16px 48px;
+}
+
+.intro { padding: clamp(16px, 5vw, 48px) 0 clamp(18px, 3.5vw, 32px); }
+
+.intro h1 {
+  margin: 0;
+  font-size: clamp(2.1rem, 1.3rem + 3.4vw, 3.5rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.intro p {
+  margin: 10px 0 0;
+  max-width: 38ch;
+  font-size: clamp(1rem, 0.95rem + 0.3vw, 1.15rem);
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* --------------------------------------------------------------- cards */
+
+.game-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: clamp(14px, 2vw, 22px);
+}
+
+.game-list > li { display: flex; }
+
+.game-card {
+  --accent: var(--x);
+  --accent-soft: var(--x-soft);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background-color 0.3s ease;
+}
+
+.game-card[data-preview="classic"] { --accent: var(--o); --accent-soft: var(--o-soft); }
+
+.game-card:hover,
+.game-card:focus-visible {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lift);
+}
+
+.game-card:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+.card-art {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background:
+    radial-gradient(120% 90% at 12% 0%, var(--accent-soft), transparent 62%),
+    radial-gradient(90% 80% at 100% 100%, color-mix(in srgb, var(--accent-soft) 55%, transparent), transparent 70%),
+    var(--sub-bg);
+}
+
+/* Absolutely placed so the square SVG cannot stretch the 16:10 frame. */
+.preview { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.card-body {
+  display: grid;
+  gap: 8px;
+  padding: 18px 20px 16px;
+}
+
+.card-body h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+}
+
+.card-body p {
+  margin: 0;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.chips {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+}
+
+.chips li {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.card-cta {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: auto 20px 20px;
+  padding: 10px 14px 10px 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 800;
+}
+
+.card-cta svg {
+  width: 18px; height: 18px;
+  fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;
+  transition: transform 0.25s ease;
+}
+
+.game-card:hover .card-cta svg,
+.game-card:focus-visible .card-cta svg { transform: translateX(4px); }
+
+/* ------------------------------------------------------- board previews */
+
+.pv-board { fill: var(--board); }
+
+/* Mega */
+.pv-sub-bg { fill: var(--sub-bg); }
+.pv-sub-grid line { stroke: var(--line); stroke-width: 1.6; stroke-linecap: round; }
+.pv-macro path { fill: none; stroke: var(--line-strong); stroke-width: 3.4; stroke-linecap: round; }
+.pv-small .mark path { stroke-width: 4.4; }
+.pv-sub.won .pv-small { opacity: 0.28; }
+.pv-sub.won-x .pv-sub-bg { fill: var(--x-soft); }
+.pv-sub.won-o .pv-sub-bg { fill: var(--o-soft); }
+.pv-sub-win { fill: none; stroke-width: 3; stroke-linecap: round; opacity: 0.3; }
+.pv-big .mark path { stroke-width: 11; }
+.pv-ring { fill: none; stroke: var(--o); stroke-width: 3; }
+
+/* Classic */
+.pv-grid path { fill: none; stroke: var(--line-strong); stroke-width: 6; stroke-linecap: round; }
+.pv-cells .mark path { stroke-width: 13; }
+.pv-win { fill: none; stroke-width: 11; stroke-linecap: round; }

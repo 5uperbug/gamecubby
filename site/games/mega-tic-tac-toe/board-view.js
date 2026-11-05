@@ -1,10 +1,14 @@
 // SVG rendering of the board plus every board animation. Zooming works by
 // animating the SVG viewBox, so marks and lines stay sharp at any zoom level.
 
-import { animate, stagger, svg as animeSvg, utils } from '../vendor/animejs/anime.esm.min.js';
+import {
+  animate, stagger, utils, motion, ms, stag, clearInline,
+} from '../../shared/js/motion.js';
+import {
+  svgEl as el, createMark, lineThrough, drawStrokes,
+} from '../../shared/js/marks.js';
+import { fadeIntoClass, shake } from '../../shared/js/effects.js';
 import { X, O, DRAW, POSITION_NAMES } from './game.js';
-
-const NS = 'http://www.w3.org/2000/svg';
 
 // Geometry in SVG user units.
 const P = 8; // outer padding
@@ -12,78 +16,13 @@ const B = 96; // local board size
 const G = 14; // gap between local boards
 const C = 30; // cell size
 const IN = (B - 3 * C) / 2; // local board inner padding
-export const SIZE = P * 2 + B * 3 + G * 2;
+const SIZE = P * 2 + B * 3 + G * 2;
 const ZOOM_MARGIN = 9;
-
-const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-export const motion = { reduced: reducedMotionQuery.matches };
-reducedMotionQuery.addEventListener?.('change', (e) => { motion.reduced = e.matches; });
-
-/** Duration helper: animations become instant when reduced motion is on. */
-export const ms = (value) => (motion.reduced ? 0 : value);
-const stag = (value, opts) => (motion.reduced ? 0 : stagger(value, opts));
 
 const subXY = (b) => [P + (b % 3) * (B + G), P + Math.floor(b / 3) * (B + G)];
 const cellXY = (c) => [IN + (c % 3) * C, IN + Math.floor(c / 3) * C];
 const subCenter = (b) => subXY(b).map((v) => v + B / 2);
 const cellCenter = (c) => cellXY(c).map((v) => v + C / 2);
-
-function el(tag, attrs = {}, parent) {
-  const node = document.createElementNS(NS, tag);
-  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
-  if (parent) parent.appendChild(node);
-  return node;
-}
-
-function markPaths(player, size, inset) {
-  const a = inset;
-  const b = size - inset;
-  if (player === X) return [`M${a} ${a}L${b} ${b}`, `M${b} ${a}L${a} ${b}`];
-  const c = size / 2;
-  const r = c - inset;
-  return [`M${c} ${c - r}A${r} ${r} 0 1 1 ${c} ${c + r}A${r} ${r} 0 1 1 ${c} ${c - r}`];
-}
-
-export function createMark(player, size, inset, extraClass = '') {
-  const g = el('g', { class: `mark mark-${player.toLowerCase()} ${extraClass}`.trim() });
-  for (const d of markPaths(player, size, inset)) el('path', { d }, g);
-  return g;
-}
-
-/** Line through three slots, extended past the outer ones. */
-function lineThrough(points, extend) {
-  const [[x1, y1], , [x2, y2]] = points;
-  const len = Math.hypot(x2 - x1, y2 - y1);
-  const ux = (x2 - x1) / len;
-  const uy = (y2 - y1) / len;
-  return `M${x1 - ux * extend} ${y1 - uy * extend}L${x2 + ux * extend} ${y2 + uy * extend}`;
-}
-
-/** Strokes a mark's paths on, one after another. */
-function drawStrokes(paths, duration = 260) {
-  if (!paths.length) return Promise.resolve();
-  return animate(animeSvg.createDrawable(paths), {
-    draw: ['0 0', '0 1'],
-    duration: ms(duration),
-    delay: stag(duration * 0.55),
-    ease: 'inOutQuad',
-  });
-}
-
-function clearInline(targets, ...props) {
-  for (const t of targets) for (const p of props) t.style.removeProperty(p);
-}
-
-/** Fades `nodes` from their current opacity to whatever CSS gives them once `cls` is on `host`. */
-async function fadeIntoClass(host, cls, nodes, duration) {
-  const from = nodes.map((n) => parseFloat(getComputedStyle(n).opacity));
-  host.classList.add(...cls.split(' '));
-  const to = nodes.map((n) => parseFloat(getComputedStyle(n).opacity));
-  await Promise.all(nodes.map((n, i) => animate(n, {
-    opacity: [from[i], to[i]], duration: ms(duration), ease: 'outQuad',
-  })));
-  clearInline(nodes, 'opacity');
-}
 
 const boardName = (b) => `${POSITION_NAMES[b].replace(/^./, (s) => s.toUpperCase())} board`;
 
@@ -347,19 +286,6 @@ export class BoardView {
     return wasActive;
   }
 
-  /** Instantly returns to the overview, e.g. before undo or a new game. */
-  resetZoom() {
-    utils.remove([this.vb, this.macroLayer, ...this.subs.map((s) => s.el)]);
-    this.vb = { x: 0, y: 0, w: SIZE };
-    this.setViewBox();
-    this.mode = 'overview';
-    this.active = null;
-    this.svg.classList.remove('zoomed');
-    this.subs.forEach((s) => s.el.classList.remove('active'));
-    clearInline([...this.subs.map((s) => s.el), this.macroLayer], 'opacity');
-    this.setTabStops();
-  }
-
   focusBoard(b) { this.subs[b]?.el.focus(); }
 
   focusCell(b, c) { this.cells[b]?.[c]?.focus(); }
@@ -391,16 +317,9 @@ export class BoardView {
     this.pending = null;
   }
 
-  shake(target) {
-    const node = typeof target === 'number' ? this.subs[target].inner : target;
-    utils.remove(node);
-    return animate(node, {
-      x: [0, -4, 4, -3, 3, -1, 0], duration: ms(420), ease: 'linear',
-      onComplete: () => clearInline([node], 'transform'),
-    });
-  }
+  shake(b) { return shake(this.subs[b].inner, 4); }
 
-  shakeCell(b, c) { return this.shake(this.cells[b][c].querySelector('.slot')); }
+  shakeCell(b, c) { return shake(this.cells[b][c].querySelector('.slot'), 4); }
 
   // ------------------------------------------------------------ move commit
 

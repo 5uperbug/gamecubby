@@ -2,11 +2,11 @@
   "name": "gamecubby",
   "version": "1.0.0",
   "private": true,
-  "description": "Ultimate (mega) tic-tac-toe in the browser.",
+  "description": "Pen-and-paper games for two players sharing one screen. Static site, no build step.",
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "start": "python3 -m http.server 8000"
+    "start": "python3 -m http.server 8000 --directory site"
   },
   "license": "MIT"
 }
