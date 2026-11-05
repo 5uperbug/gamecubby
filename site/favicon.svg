@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#1f2430"/>
-  <rect x="9" y="9" width="21" height="21" rx="5" fill="#2e3548"/>
-  <rect x="34" y="9" width="21" height="21" rx="5" fill="#2e3548"/>
-  <rect x="9" y="34" width="21" height="21" rx="5" fill="#2e3548"/>
-  <rect x="34" y="34" width="21" height="21" rx="5" fill="#2e3548"/>
-  <path d="M14.5 14.5l10 10M24.5 14.5l-10 10" stroke="#ff6f5c" stroke-width="3.6" stroke-linecap="round"/>
-  <circle cx="44.5" cy="44.5" r="5.4" fill="none" stroke="#57a3ff" stroke-width="3.6"/>
+  <!-- Game Cubby: a cubbyhole shelf holding pieces from three games -->
+  <rect x="5" y="5" width="54" height="54" rx="11" fill="#fffdf8" stroke="#1f2430" stroke-width="5"/>
+  <path d="M27 5v54M27 32h32" stroke="#1f2430" stroke-width="5"/>
+  <circle cx="16" cy="47.5" r="6.4" fill="#e0533d"/>
+  <circle cx="16" cy="33.6" r="6.4" fill="#2a6fd6"/>
+  <path d="M37.6 13.6l10.8 10.8M48.4 13.6l-10.8 10.8" stroke="#e0533d" stroke-width="4.6" stroke-linecap="round"/>
+  <circle cx="43" cy="45.5" r="6" fill="none" stroke="#2a6fd6" stroke-width="4.6"/>
 </svg>

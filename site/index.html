@@ -17,13 +17,18 @@
 <body>
   <header class="topbar" data-reveal>
     <a class="brand" href="./" aria-current="page">
-      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
-        <rect class="logo-cell" x="2" y="2" width="13" height="13" rx="3.5"/>
-        <rect class="logo-cell" x="17" y="2" width="13" height="13" rx="3.5"/>
-        <rect class="logo-cell" x="2" y="17" width="13" height="13" rx="3.5"/>
-        <rect class="logo-cell" x="17" y="17" width="13" height="13" rx="3.5"/>
-        <path class="logo-x" d="M5.8 5.8l5.4 5.4M11.2 5.8l-5.4 5.4"/>
-        <circle class="logo-o" cx="23.5" cy="23.5" r="3.4"/>
+      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
+        <defs><clipPath id="logo-slot"><rect x="7.5" y="7.5" width="17" height="49"/></clipPath></defs>
+        <g class="logo-body">
+          <rect class="logo-frame" x="5" y="5" width="54" height="54" rx="11"/>
+          <path class="logo-shelf" d="M27 5v54M27 32h32"/>
+        </g>
+        <g clip-path="url(#logo-slot)">
+          <circle class="logo-disc disc-x" cx="16" cy="47.5" r="6.4" data-drop="48"/>
+          <circle class="logo-disc disc-o" cx="16" cy="33.6" r="6.4" data-drop="34"/>
+        </g>
+        <path class="logo-x" d="M37.6 13.6l10.8 10.8M48.4 13.6l-10.8 10.8"/>
+        <circle class="logo-o" cx="43" cy="45.5" r="6"/>
       </svg>
       <span class="brand-text">Game Cubby</span>
     </a>

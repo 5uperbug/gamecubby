@@ -13,18 +13,34 @@
 // The SVG fills the card's 16:10 art area. Give it a square viewBox and the
 // board appears centred. With reduced motion on, only buildPreview() runs.
 
-import { animate, motion, ms, stag, clearInline } from './shared/js/motion.js';
+import { animate, motion, ms, clearInline } from './shared/js/motion.js';
 import { drawStrokes } from './shared/js/marks.js';
 import { reveal } from './shared/js/effects.js';
 import { initThemeToggle } from './shared/js/theme.js';
 
+/** The shelf pops in, two discs drop into the tall slot, then the X and O draw on. */
 async function animateLogo() {
   const logo = document.querySelector('.logo');
-  const cells = [...logo.querySelectorAll('.logo-cell')];
+  const body = logo.querySelector('.logo-body');
+  const discs = [...logo.querySelectorAll('.logo-disc')]; // bottom disc first
   const strokes = [...logo.querySelectorAll('.logo-x, .logo-o')];
   for (const s of strokes) s.style.opacity = '0';
-  await animate(cells, { scale: [0.3, 1], duration: ms(450), delay: stag(70), ease: 'outBack(2.4)' });
-  clearInline(cells, 'transform');
+  // Start each disc above the slot; the slot's clip path hides it until it falls in.
+  for (const d of discs) d.style.transform = `translateY(${-d.dataset.drop}px)`;
+
+  await animate(body, { scale: [0.4, 1], duration: ms(420), ease: 'outBack(2.2)' });
+  clearInline([body], 'transform');
+  // Each disc falls under gravity and settles with one small bounce. The next
+  // one starts as the previous lands, so they never pass through each other.
+  await Promise.all(discs.map((d, i) => animate(d, {
+    translateY: [
+      { from: -d.dataset.drop, to: 0, duration: ms(320), ease: 'inQuad' },
+      { to: -3, duration: ms(90), ease: 'outQuad' },
+      { to: 0, duration: ms(90), ease: 'inQuad' },
+    ],
+    delay: ms(i * 300),
+  })));
+  clearInline(discs, 'transform');
   const drawing = drawStrokes(strokes, 260);
   clearInline(strokes, 'opacity');
   await drawing;

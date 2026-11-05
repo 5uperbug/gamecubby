@@ -3,9 +3,14 @@
 
 :root { --page-max: 1040px; }
 
+/* The logo: a cubbyhole shelf holding pieces from three games. */
 .logo { width: 34px; height: 34px; flex: none; overflow: visible; }
-.logo-cell { fill: var(--surface-2); transform-box: fill-box; transform-origin: center; }
-.logo-x, .logo-o { fill: none; stroke-width: 2.6; stroke-linecap: round; }
+.logo-body { transform-box: fill-box; transform-origin: center; }
+.logo-frame { fill: var(--surface); stroke: var(--ink); stroke-width: 5; }
+.logo-shelf { fill: none; stroke: var(--ink); stroke-width: 5; }
+.logo-disc.disc-x { fill: var(--x); }
+.logo-disc.disc-o { fill: var(--o); }
+.logo-x, .logo-o { fill: none; stroke-width: 4.6; stroke-linecap: round; }
 .logo-x { stroke: var(--x); }
 .logo-o { stroke: var(--o); }
 
