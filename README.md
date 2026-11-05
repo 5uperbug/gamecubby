@@ -4,7 +4,7 @@ Ultimate tic-tac-toe in the browser: nine tic-tac-toe boards inside one big
 board, for two players on one device. It is a static site with no build step,
 so it runs as-is on GitHub Pages.
 
-**Play it:** <https://5uperbug.github.io/megatictacktoe/>
+**Play it:** <https://5uperbug.github.io/gamecubby/>
 
 Rules follow [Ultimate tic-tac-toe on Wikipedia](https://en.wikipedia.org/wiki/Ultimate_tic-tac-toe).
 
