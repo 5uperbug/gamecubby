@@ -80,6 +80,20 @@ test('every game is linked from the home page and links back to it', () => {
   }
 });
 
+test('every game has a home page preview, and every card names a real game', () => {
+  const home = readFileSync(join(SITE, 'index.html'), 'utf8');
+  const named = [...home.matchAll(/data-game="([^"]+)"/g)].map((m) => m[1]);
+  for (const slug of named) {
+    assert.ok(gameDirs.includes(slug), `card data-game="${slug}" has no games/${slug}/ folder`);
+  }
+  for (const game of gameDirs) {
+    assert.ok(named.includes(game), `no card with data-game="${game}" on the home page`);
+    const preview = join(SITE, 'games', game, 'preview.js');
+    assert.ok(existsSync(preview), `games/${game}/ has no preview.js`);
+    assert.match(readFileSync(preview, 'utf8'), /export function buildPreview\(/, `games/${game}/preview.js must export buildPreview(svg)`);
+  }
+});
+
 test('every page loads the theme script before its stylesheets', () => {
   for (const file of htmlFiles) {
     const html = readFileSync(file, 'utf8');

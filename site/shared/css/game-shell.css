@@ -11,6 +11,8 @@ html, body { height: 100%; }
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr);
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  /* Confetti can fly past the screen edge on narrow phones; never scroll sideways. */
+  overflow-x: clip;
 }
 
 /* ------------------------------------------------------------------ layout */
@@ -173,8 +175,9 @@ html, body { height: 100%; }
   .player-score { padding: 2px 6px; }
 }
 
+/* Very narrow: labelled buttons drop their icon. Icon-only buttons keep it. */
 @media (max-width: 360px) {
-  .controls .btn svg { display: none; }
+  .controls .btn:has(> span) svg { display: none; }
 }
 
 /* ----------------------------------------------------------------- result */

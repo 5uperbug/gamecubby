@@ -64,14 +64,19 @@
 /* Overview: whole boards are the targets. */
 #board:not(.zoomed) .sub { cursor: pointer; }
 #board:not(.zoomed) .cell { pointer-events: none; }
-#board:not(.zoomed) .sub.playable:hover .sub-ring { stroke-width: 3.4; }
+@media (hover: hover) {
+  #board:not(.zoomed) .sub.playable:hover .sub-ring { stroke-width: 3.4; }
+}
 
 /* Zoomed: only cells of the active board respond. */
 #board.zoomed .sub:not(.active) { pointer-events: none; }
 #board.zoomed .sub.active .sub-bg { fill: var(--sub-bg); }
 #board.zoomed .sub.active .cell:not(.filled) { cursor: pointer; }
-#board.zoomed .sub.active .cell:not(.filled):hover .cell-hit {
-  fill: color-mix(in srgb, var(--turn-soft) 80%, transparent);
+/* Only where hover is real: touch screens leave it stuck on the last tap. */
+@media (hover: hover) {
+  #board.zoomed .sub.active .cell:not(.filled):hover .cell-hit {
+    fill: color-mix(in srgb, var(--turn-soft) 80%, transparent);
+  }
 }
 #board.zoomed .sub.active .cell.pending .cell-hit {
   fill: color-mix(in srgb, var(--turn-soft) 100%, transparent);

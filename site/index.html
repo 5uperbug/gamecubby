@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Game Cubby</title>
-  <meta name="description" content="Pen-and-paper games for two players sharing one screen: Mega Tic-Tac-Toe and classic Tic-Tac-Toe.">
+  <meta name="description" content="Pen-and-paper classics for two players sharing one screen: tic-tac-toe and its variants, dots and boxes, and more.">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0f1420" media="(prefers-color-scheme: dark)">
@@ -45,12 +45,12 @@
 
     <ul class="game-list">
       <li data-reveal>
-        <a class="game-card" href="games/mega-tic-tac-toe/" data-preview="mega"
-           aria-labelledby="mega-title" aria-describedby="mega-desc">
+        <a class="game-card" href="games/mega-tic-tac-toe/" data-game="mega-tic-tac-toe" data-accent="x"
+           aria-labelledby="mega-tic-tac-toe-title" aria-describedby="mega-tic-tac-toe-desc">
           <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
           <div class="card-body">
-            <h2 id="mega-title">Mega Tic-Tac-Toe</h2>
-            <p id="mega-desc">Nine boards in one. The square you pick decides which board your opponent plays in next.</p>
+            <h2 id="mega-tic-tac-toe-title">Mega Tic-Tac-Toe</h2>
+            <p id="mega-tic-tac-toe-desc">Nine boards in one. The square you pick decides which board your opponent plays in next.</p>
             <ul class="chips">
               <li>2 players</li>
               <li>Strategy</li>
@@ -64,15 +64,106 @@
         </a>
       </li>
       <li data-reveal>
-        <a class="game-card" href="games/tic-tac-toe/" data-preview="classic"
-           aria-labelledby="classic-title" aria-describedby="classic-desc">
+        <a class="game-card" href="games/tic-tac-toe/" data-game="tic-tac-toe" data-accent="o"
+           aria-labelledby="tic-tac-toe-title" aria-describedby="tic-tac-toe-desc">
           <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
           <div class="card-body">
-            <h2 id="classic-title">Tic-Tac-Toe</h2>
-            <p id="classic-desc">The classic three in a row. Quick rounds, with the score kept between them.</p>
+            <h2 id="tic-tac-toe-title">Tic-Tac-Toe</h2>
+            <p id="tic-tac-toe-desc">The classic three in a row. Quick rounds, with the score kept between them.</p>
             <ul class="chips">
               <li>2 players</li>
               <li>Quick rounds</li>
+            </ul>
+          </div>
+          <span class="card-cta" aria-hidden="true">
+            Play
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </span>
+        </a>
+      </li>
+      <li data-reveal>
+        <a class="game-card" href="games/four-in-a-row/" data-game="four-in-a-row" data-accent="x"
+           aria-labelledby="four-in-a-row-title" aria-describedby="four-in-a-row-desc">
+          <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
+          <div class="card-body">
+            <h2 id="four-in-a-row-title">Four in a Row</h2>
+            <p id="four-in-a-row-desc">Drop discs into the columns. Line up four across, down or diagonally before your opponent does.</p>
+            <ul class="chips">
+              <li>2 players</li>
+              <li>Quick rounds</li>
+            </ul>
+          </div>
+          <span class="card-cta" aria-hidden="true">
+            Play
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </span>
+        </a>
+      </li>
+      <li data-reveal>
+        <a class="game-card" href="games/dots-and-boxes/" data-game="dots-and-boxes" data-accent="o"
+           aria-labelledby="dots-and-boxes-title" aria-describedby="dots-and-boxes-desc">
+          <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
+          <div class="card-body">
+            <h2 id="dots-and-boxes-title">Dots and Boxes</h2>
+            <p id="dots-and-boxes-desc">Take turns joining dots. Close a box to claim it and go again. Most boxes wins.</p>
+            <ul class="chips">
+              <li>2 players</li>
+              <li>Pen and paper</li>
+            </ul>
+          </div>
+          <span class="card-cta" aria-hidden="true">
+            Play
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </span>
+        </a>
+      </li>
+      <li data-reveal>
+        <a class="game-card" href="games/gomoku/" data-game="gomoku" data-accent="x"
+           aria-labelledby="gomoku-title" aria-describedby="gomoku-desc">
+          <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
+          <div class="card-body">
+            <h2 id="gomoku-title">Gomoku</h2>
+            <p id="gomoku-desc">Five in a row on a 15×15 grid. Easy to learn, with plenty of room to set traps.</p>
+            <ul class="chips">
+              <li>2 players</li>
+              <li>Strategy</li>
+            </ul>
+          </div>
+          <span class="card-cta" aria-hidden="true">
+            Play
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </span>
+        </a>
+      </li>
+      <li data-reveal>
+        <a class="game-card" href="games/notakto/" data-game="notakto" data-accent="o"
+           aria-labelledby="notakto-title" aria-describedby="notakto-desc">
+          <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
+          <div class="card-body">
+            <h2 id="notakto-title">Notakto</h2>
+            <p id="notakto-desc">Tic-tac-toe where you both play X. Complete a line on the last live board and you lose.</p>
+            <ul class="chips">
+              <li>2 players</li>
+              <li>Quick rounds</li>
+              <li>Twist</li>
+            </ul>
+          </div>
+          <span class="card-cta" aria-hidden="true">
+            Play
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </span>
+        </a>
+      </li>
+      <li data-reveal>
+        <a class="game-card" href="games/order-and-chaos/" data-game="order-and-chaos" data-accent="x"
+           aria-labelledby="order-and-chaos-title" aria-describedby="order-and-chaos-desc">
+          <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
+          <div class="card-body">
+            <h2 id="order-and-chaos-title">Order and Chaos</h2>
+            <p id="order-and-chaos-desc">One player builds five in a row, the other spoils it, and both can play X or O.</p>
+            <ul class="chips">
+              <li>2 players</li>
+              <li>Asymmetric</li>
             </ul>
           </div>
           <span class="card-cta" aria-hidden="true">

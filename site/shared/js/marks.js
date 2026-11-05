@@ -29,9 +29,10 @@ export function createMark(player, size, inset, extraClass = '') {
   return g;
 }
 
-/** Path data for a line through three points, extended past the outer ones. */
+/** Path data for a line from the first point to the last, extended past both ends. */
 export function lineThrough(points, extend) {
-  const [[x1, y1], , [x2, y2]] = points;
+  const [x1, y1] = points[0];
+  const [x2, y2] = points.at(-1);
   const len = Math.hypot(x2 - x1, y2 - y1);
   const ux = (x2 - x1) / len;
   const uy = (y2 - y1) / len;
@@ -47,4 +48,12 @@ export function drawStrokes(paths, duration = 260) {
     delay: stag(duration * 0.55),
     ease: 'inOutQuad',
   });
+}
+
+/** Puts a mark in its own positioned group, so the mark itself is free to scale or fade. */
+export function markAt(parent, player, x, y, size, inset) {
+  const slot = svgEl('g', { transform: `translate(${x} ${y})` }, parent);
+  const mark = createMark(player, size, inset);
+  slot.appendChild(mark);
+  return mark;
 }

@@ -1,0 +1,155 @@
+/* Notakto boards. Layout, header, buttons and dialogs come from
+   shared/css/base.css and shared/css/game-shell.css. */
+
+:root {
+  --tile-shadow: drop-shadow(0 1px 1.5px rgb(40 30 10 / 0.07)) drop-shadow(0 6px 14px rgb(40 30 10 / 0.09));
+}
+
+:root[data-theme="dark"] {
+  --tile-shadow: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.3)) drop-shadow(0 8px 18px rgb(0 0 0 / 0.32));
+}
+
+/* Confetti and the "Oops!" fly past the edges; they must never scroll the page. */
+.app { overflow: hidden; overflow: clip; }
+
+/* Each board is its own tile, so the SVG is see-through and takes the shape
+   of the current arrangement (app.js sets --ratio). */
+#board {
+  --ratio: 1;
+  width: min(100cqw, 100cqh * var(--ratio));
+  height: min(100cqh, 100cqw / var(--ratio));
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+@supports not (width: 1cqw) {
+  #board { width: min(100%, 70vh * var(--ratio)); height: auto; aspect-ratio: var(--ratio); }
+}
+
+.tile-body { transform-box: fill-box; transform-origin: center; }
+
+.tile-bg {
+  fill: var(--board);
+  stroke: transparent;
+  filter: var(--tile-shadow);
+  transition: fill 0.35s ease, stroke 0.35s ease, filter 0.35s ease;
+}
+
+.grid path {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+
+.cell-hit {
+  fill: transparent;
+  stroke: transparent;
+  transition: fill 0.15s ease;
+}
+
+.cell .mark path { stroke-width: 10; }
+
+#board.live .tile:not(.dead) .cell { cursor: pointer; }
+#board.live .tile:not(.dead) .cell:not(.filled):hover .cell-hit {
+  fill: color-mix(in srgb, var(--turn-soft) 80%, transparent);
+}
+#board.live .tile.dead { cursor: not-allowed; }
+
+.cell:focus-visible .cell-hit {
+  stroke: var(--focus);
+  stroke-width: 3px;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Dead boards sink back: flat, see-through, dimmed, crossed out and stamped. */
+.tile.dead .tile-bg {
+  fill: color-mix(in srgb, var(--board) 40%, transparent);
+  stroke: var(--line);
+  stroke-width: 2.5;
+  filter: none;
+}
+.tile.dead .grid,
+.tile.dead .cells { opacity: 0.3; }
+
+.kill-line {
+  fill: none;
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+
+.stamp-inner { transform: rotate(-8deg); }
+
+.stamp rect {
+  fill: var(--surface);
+  stroke: var(--line-strong);
+  stroke-width: 3;
+}
+
+.stamp-x rect { stroke: var(--x); }
+.stamp-o rect { stroke: var(--o); }
+
+.stamp text {
+  fill: var(--ink);
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.oops {
+  font-weight: 900;
+  text-anchor: middle;
+  dominant-baseline: central;
+  paint-order: stroke;
+  stroke: var(--board);
+  stroke-width: 0.18em;
+  stroke-linejoin: round;
+  transform-box: fill-box;
+  transform-origin: center;
+  pointer-events: none;
+}
+.oops-x { fill: var(--x); }
+.oops-o { fill: var(--o); }
+
+/* The round's winner gets a halo around their pill. */
+.player-x.winner { box-shadow: 0 0 0 4px color-mix(in srgb, var(--x) 25%, transparent), var(--shadow); }
+.player-o.winner { box-shadow: 0 0 0 4px color-mix(in srgb, var(--o) 25%, transparent), var(--shadow); }
+
+/* Quiet until the round is over, then it becomes the obvious next step. */
+.btn.primary.quiet:not(:disabled) {
+  background: var(--surface);
+  color: inherit;
+}
+.btn.primary.quiet:hover:not(:disabled) { background: var(--surface-2); }
+
+/* Confetti bursts from the middle of the boards. */
+.board-area .confetti { top: 50%; }
+
+/* New match: the board counts sit side by side, each with a small picture. */
+.board-choices { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.board-choices .choice {
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 6px 10px;
+  text-align: center;
+}
+
+.board-choices .choice span { justify-items: center; gap: 6px; }
+
+.choice-art {
+  width: 40px;
+  height: 30px;
+  fill: var(--surface-2);
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  transition: fill 0.2s ease, stroke 0.2s ease;
+}
+
+.choice:has(input:checked) .choice-art { fill: var(--turn-soft); stroke: var(--turn); }

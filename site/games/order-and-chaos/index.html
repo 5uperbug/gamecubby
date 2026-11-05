@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Order and Chaos · Game Cubby</title>
+  <meta name="description" content="Order and Chaos for two players on one screen: one builds five in a row, the other spoils it, and both can play X or O.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f1420" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <script src="../../shared/js/theme-boot.js"></script>
+  <link rel="stylesheet" href="../../shared/css/base.css">
+  <link rel="stylesheet" href="../../shared/css/game-shell.css">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar" data-reveal>
+      <div class="title-group">
+        <a class="icon-btn back-link" href="../../" aria-label="All games" title="All games">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg>
+        </a>
+        <h1 class="page-title">
+          <svg class="title-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="5.5" cy="5.5" r="2.6"/><circle cx="12" cy="12" r="2.6"/><circle cx="18.5" cy="18.5" r="2.6"/><path d="M15.5 3.5l5 5M20.5 3.5l-5 5M3.5 15.5l5 5M8.5 15.5l-5 5"/>
+          </svg>
+          <span class="page-title-text">Order and Chaos</span>
+        </h1>
+      </div>
+      <nav class="top-actions" aria-label="Game menu">
+        <button class="icon-btn" id="btn-rules" type="button" aria-label="How to play">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1.1 1-1.1 1.7v.7"/><circle class="dot" cx="12" cy="17" r=".6"/></svg>
+          <span class="btn-label">Rules</span>
+        </button>
+        <button class="icon-btn" id="btn-match" type="button" aria-label="New match">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg>
+          <span class="btn-label">New match</span>
+        </button>
+        <button class="icon-btn" id="btn-theme" type="button" aria-label="Switch to dark theme">
+          <svg class="theme-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <g class="sun"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></g>
+            <path class="moon" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>
+          </svg>
+        </button>
+      </nav>
+    </header>
+
+    <main class="game">
+      <section class="status" aria-label="Score" data-reveal>
+        <div class="players">
+          <div class="player" data-player="p1" data-role="order">
+            <span class="player-name">Player 1</span>
+            <span class="role" data-role="order">
+              <svg class="role-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <g class="icon-order"><path d="M5 12h14"/><circle cx="4.5" cy="12" r="2.6"/><circle cx="12" cy="12" r="2.6"/><circle cx="19.5" cy="12" r="2.6"/></g>
+                <g class="icon-chaos"><path d="M5 16.5L12 7l7 10"/><circle cx="4.5" cy="17" r="2.6"/><circle cx="12" cy="6.5" r="2.6"/><circle cx="19.5" cy="17.5" r="2.6"/></g>
+              </svg>
+              <span class="role-name">Order</span>
+            </span>
+            <span class="player-score" title="Rounds won"><span class="sr-only">Rounds won: </span><span data-score="p1">0</span></span>
+          </div>
+          <div class="player" data-player="p2" data-role="chaos">
+            <span class="player-name">Player 2</span>
+            <span class="role" data-role="chaos">
+              <svg class="role-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <g class="icon-order"><path d="M5 12h14"/><circle cx="4.5" cy="12" r="2.6"/><circle cx="12" cy="12" r="2.6"/><circle cx="19.5" cy="12" r="2.6"/></g>
+                <g class="icon-chaos"><path d="M5 16.5L12 7l7 10"/><circle cx="4.5" cy="17" r="2.6"/><circle cx="12" cy="6.5" r="2.6"/><circle cx="19.5" cy="17.5" r="2.6"/></g>
+              </svg>
+              <span class="role-name">Chaos</span>
+            </span>
+            <span class="player-score" title="Rounds won"><span class="sr-only">Rounds won: </span><span data-score="p2">0</span></span>
+          </div>
+        </div>
+        <p class="hint" id="hint" aria-live="polite"></p>
+        <p class="status-note" id="round-note"></p>
+      </section>
+
+      <div class="board-area">
+        <svg id="board" class="board" role="group" aria-label="Board" aria-describedby="hint"></svg>
+        <div class="confetti" aria-hidden="true"></div>
+      </div>
+
+      <section class="controls" aria-label="Move controls" data-reveal>
+        <button type="button" class="btn place-btn" id="btn-x" data-symbol="X" aria-label="Place X" aria-keyshortcuts="X" title="Place X (X key)" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>
+        </button>
+        <button type="button" class="btn place-btn" id="btn-o" data-symbol="O" aria-label="Place O" aria-keyshortcuts="O" title="Place O (O key)" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.6"/></svg>
+        </button>
+        <button type="button" class="btn" id="btn-undo">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+          <span>Undo</span>
+        </button>
+        <button type="button" class="btn primary" id="btn-round">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <span>New round</span>
+        </button>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="sheet" id="dlg-match" aria-labelledby="dlg-match-title">
+    <form method="dialog">
+      <h2 id="dlg-match-title">Start a new match?</h2>
+      <div class="sheet-text">
+        <p>Both scores go back to 0 and Player 1 starts as Order.</p>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" name="threats">
+        <span class="toggle-track" aria-hidden="true"></span>
+        <span>Mark squares where one more X or O would make five</span>
+      </label>
+      <div class="sheet-actions">
+        <button class="btn" value="cancel">Cancel</button>
+        <button class="btn primary" value="start">New match</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="sheet" id="dlg-rules" aria-labelledby="dlg-rules-title">
+    <form method="dialog">
+      <h2 id="dlg-rules-title">How to play</h2>
+      <div class="sheet-text">
+        <p>One player is <strong class="role-word order">Order</strong>, the other is <strong class="role-word chaos">Chaos</strong>. Order moves first.</p>
+        <ol>
+          <li><strong>Pick a square.</strong> Tap any empty square. Tap another to change your mind.</li>
+          <li><strong>Choose X or O.</strong> Both players may play either symbol. Pressing X or O places it.</li>
+        </ol>
+        <p><strong class="role-word order">Order</strong> wins as soon as five identical symbols line up across, down or diagonally, no matter who placed them.</p>
+        <p><strong class="role-word chaos">Chaos</strong> wins if the board fills up without five in a row.</p>
+        <p><strong>House rule:</strong> six in a row also counts as a win for Order.</p>
+        <p>You swap roles every round. Each round you win scores a point, in either role.</p>
+        <p class="note">Keyboard: arrow keys move the selection, X or O places, Esc clears the selection, Ctrl+Z undoes.</p>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn primary" value="close">Got it</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

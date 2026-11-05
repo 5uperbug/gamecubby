@@ -31,6 +31,41 @@ plays in next.
 The classic 3×3 game. Tap a square to play. Scores carry across rounds, and
 the starting player alternates each round. **New match** resets the score.
 
+### Four in a Row
+
+Drop discs into a 7×6 grid: tap anywhere in a column and the disc falls to the
+lowest free space. Line up four across, down or diagonally to win the round.
+Red discs carry a cross and Blue discs a ring, so colour is never the only cue.
+Scores carry across rounds, and the starting player alternates each round.
+
+### Dots and Boxes
+
+Take turns joining two neighbouring dots. Close a box to claim it and draw
+again; when every line is drawn, most boxes wins. Choose 3×3, 4×4 or 5×5
+boxes under **New game**. Games won are kept across games, and the starting
+player alternates.
+
+### Gomoku
+
+Five in a row on a 15×15 grid. On a phone the first tap zooms in on that part
+of the board; tap a cell to place your mark, then **Confirm**. **New game**
+offers **Freestyle** (five or more wins) or **Exactly five** (six or more
+doesn't count). Games won are kept, and players take turns to start.
+
+### Notakto
+
+Tic-tac-toe where both players play X, on one, two or three boards (picked
+under **New match**). Three in a row kills a board, and whoever kills the last
+live board loses. Each X keeps its player's colour, and scores carry across
+rounds.
+
+### Order and Chaos
+
+A 6×6 board where both players may play X or O. **Order** wins with five
+identical symbols in a row (six counts too); **Chaos** wins if the board fills
+first. Tap a square, then press **X** or **O**. Roles swap every round, and
+**New match** can mark squares where one more symbol would make five.
+
 ### Shared by every game
 
 - Light and dark themes: the first visit follows the system setting, and the
@@ -50,7 +85,7 @@ else is tooling.
 ```
 site/                        ← deployed to GitHub Pages
   index.html                 home page: the game picker
-  home.css  home.js          home page styles, card previews and animations
+  home.css  home.js          home page styles; loads each card's preview
   favicon.svg
   games/
     mega-tic-tac-toe/        one folder per game, served at games/<slug>/
@@ -59,9 +94,13 @@ site/                        ← deployed to GitHub Pages
       app.js                 turn flow, UI state, persistence
       board-view.js          SVG board, viewBox zoom, board animations
       game.js                rules: pure functions, no DOM
+      preview.js             animated board art for the home page card
       icon.svg               browser tab icon
-    tic-tac-toe/
-      index.html  style.css  app.js  game.js  icon.svg
+    tic-tac-toe/  dots-and-boxes/  notakto/  order-and-chaos/
+      index.html  style.css  app.js  game.js  preview.js  icon.svg
+    four-in-a-row/           same files, plus disc.js (disc drawing and the drop,
+                             shared by app.js and preview.js)
+    gomoku/                  same files, plus board-view.js (zoom, like Mega's)
   shared/
     css/base.css             design tokens, light/dark themes, header,
                              buttons, dialogs, X/O mark colours
@@ -69,7 +108,8 @@ site/                        ← deployed to GitHub Pages
                              board, controls, result card, confetti
     js/theme-boot.js         applies the theme before first paint (plain <script>)
     js/theme.js              theme toggle button
-    js/motion.js             the only anime.js import, plus reduced-motion helpers
+    js/motion.js             the only anime.js import, reduced-motion helpers,
+                             viewBox zoom animator
     js/effects.js            entrance reveal, dialogs, shake, pop, confetti
     js/marks.js              SVG helpers: X/O marks, win lines, stroke drawing
     js/storage.js            namespaced localStorage
@@ -78,8 +118,9 @@ site/                        ← deployed to GitHub Pages
 tests/
   mega-tic-tac-toe.test.js   Mega rules
   tic-tac-toe.test.js        classic rules and the shared 3×3 core
-  site.test.js               every link and import resolves; every game is
-                             linked from the home page and links back
+  <slug>.test.js             rules for each of the other games
+  site.test.js               every link and import resolves; every game has
+                             a home page card and preview, and links back
 .github/workflows/pages.yml  runs the tests, then deploys site/
 ```
 
@@ -106,10 +147,15 @@ tests/
    (`href="../../"`) in the header.
 3. Put the rules in `game.js` as pure functions and add
    `tests/<slug>.test.js`.
-4. Add a card for the game to `site/index.html`. A preview is optional: add a
-   builder to `home.js` and set `data-preview` on the card.
-5. Run `npm test`. The site test fails if the game has no card on the home
-   page, has no link back, or references a file that does not exist.
+4. Add `preview.js` exporting `buildPreview(svg)`, which draws the card art
+   and returns `{ hide, intro, enter, leave }`. The contract is described at
+   the top of `home.js`.
+5. Add a card to `site/index.html` with `data-game="<slug>"` and
+   `data-accent="x"` or `"o"`. `home.js` loads the preview from the game's
+   folder.
+6. Run `npm test`. The site test fails if the game has no card on the home
+   page, no preview or no link back, or references a file that does not
+   exist.
 
 ## Run locally
 

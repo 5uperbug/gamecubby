@@ -1,0 +1,72 @@
+/* Dots and Boxes board. Layout, header, buttons and dialogs come from
+   shared/css/base.css and shared/css/game-shell.css. */
+
+.title-icon .dots { stroke-width: 3.4; }
+
+/* Everything that animates scales around its own centre. */
+.grid-dot, .slot-guide, .slot-line, .last-line, .box-fill {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.grid-dot { fill: var(--line-strong); }
+
+/* Only the tap areas take pointer input. */
+.boxes, .dots, .last-line, .slot > :not(.slot-hit) { pointer-events: none; }
+
+.slot-hit { fill: transparent; }
+
+/* Lines not drawn yet: a faint dotted trail between the dots. */
+.slot-guide {
+  stroke: var(--line);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-dasharray: 0 7.5;
+}
+.slot.drawn .slot-guide { visibility: hidden; }
+
+.slot-line, .slot-ghost, .last-line {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.slot-line { stroke-width: 7; }
+
+/* Preview of the line you are about to draw, in the colour of the player to move. */
+.slot-ghost {
+  stroke: var(--turn);
+  stroke-width: 7;
+  opacity: 0;
+  transition: opacity 0.15s ease, stroke 0.3s ease;
+}
+
+@media (hover: hover) {
+  #board.live .slot:not(.drawn) { cursor: pointer; }
+  #board.live .slot:not(.drawn):hover .slot-ghost { opacity: 0.45; }
+  #board.live .slot:not(.drawn):hover .slot-guide { visibility: hidden; }
+}
+
+#board.live .slot:not(.drawn):focus-visible .slot-ghost { opacity: 0.45; }
+#board.live .slot:not(.drawn):focus-visible .slot-guide { visibility: hidden; }
+
+.slot-focus {
+  fill: none;
+  stroke: var(--focus);
+  stroke-width: 2.5;
+  opacity: 0;
+}
+.slot:focus-visible .slot-focus { opacity: 1; }
+
+/* A soft glow under the latest line, so the next player can see what changed. */
+.last-line {
+  stroke-width: 18;
+  opacity: 0.2;
+}
+
+.claimed-x .box-fill { fill: var(--x-soft); }
+.claimed-o .box-fill { fill: var(--o-soft); }
+.box .mark path { stroke-width: 5.5; }
+
+/* Finished game: the lines step back so the boxes read clearly. */
+#board.over .slot-line { opacity: 0.6; }
+#board.over .last-line { opacity: 0; }

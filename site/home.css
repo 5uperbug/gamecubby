@@ -61,7 +61,7 @@
   transition: transform 0.25s ease, box-shadow 0.25s ease, background-color 0.3s ease;
 }
 
-.game-card[data-preview="classic"] { --accent: var(--o); --accent-soft: var(--o-soft); }
+.game-card[data-accent="o"] { --accent: var(--o); --accent-soft: var(--o-soft); }
 
 .game-card:hover,
 .game-card:focus-visible {

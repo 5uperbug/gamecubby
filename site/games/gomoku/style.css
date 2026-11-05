@@ -1,0 +1,82 @@
+/* Gomoku board. Layout, header, buttons and dialogs come from
+   shared/css/base.css and shared/css/game-shell.css. */
+
+.grid { pointer-events: none; }
+
+.grid path {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 0.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.grid .frame { stroke-width: 1.5; }
+
+.guide {
+  fill: var(--line-strong);
+  opacity: 0.3;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: opacity 0.2s ease;
+}
+.cell.filled .guide,
+.cell.pending .guide { opacity: 0; }
+
+.cell-hit {
+  fill: transparent;
+  stroke: transparent;
+  transition: fill 0.15s ease;
+}
+
+.cell .mark path { stroke-width: 2.4; }
+.mark.pending { opacity: 0.6; }
+
+/* The last move sits on a tint of its player's colour, strong enough to spot in either theme. */
+.cell.last[data-mark="X"] .cell-hit { fill: color-mix(in srgb, var(--x) 24%, var(--board)); }
+.cell.last[data-mark="O"] .cell-hit { fill: color-mix(in srgb, var(--o) 24%, var(--board)); }
+
+/* The next tap places a mark: zoomed in, or cells big enough to hit. */
+#board[data-tap="place"] .cell:not(.filled) { cursor: pointer; }
+/* Only where hover is real: touch screens leave it stuck on the last tap. */
+@media (hover: hover) {
+  #board[data-tap="place"] .cell:not(.filled):not(.pending):hover .cell-hit {
+    fill: color-mix(in srgb, var(--turn-soft) 80%, transparent);
+  }
+}
+
+/* Small cells: the next tap zooms in on that spot. */
+#board[data-tap="zoom"] { cursor: zoom-in; }
+
+.cell.pending .cell-hit {
+  fill: var(--turn-soft);
+  stroke: var(--turn);
+  stroke-width: 0.8;
+  stroke-dasharray: 2 2;
+}
+
+.cell:focus-visible .cell-hit {
+  stroke: var(--focus);
+  stroke-width: 1.8;
+  stroke-dasharray: none;
+}
+
+.win-line {
+  fill: none;
+  stroke-width: 3.4;
+  stroke-linecap: round;
+}
+
+/* Finished game: the winning line stays bright, everything else steps back. */
+#board.over .cell:not(.win) .mark { opacity: 0.3; }
+#board.over.drawn .cell .mark { opacity: 0.5; }
+
+/* Icons follow the labels: Whole board or Cancel, Confirm or Play again. */
+#btn-back:not(.cancel) .icon-cancel,
+#btn-back.cancel .icon-zoom-out,
+#btn-confirm:not(.again) .icon-again,
+#btn-confirm.again .icon-confirm { display: none; }
+
+.sheet-text .note strong.x { color: var(--x); }
+.sheet-text .note strong.o { color: var(--o); }
+.sheet .toggle + .sheet-text { margin-top: 10px; }

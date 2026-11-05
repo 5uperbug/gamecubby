@@ -318,7 +318,9 @@ board.addEventListener('click', (e) => {
   if (cell) place(+cell.dataset.cell, 'pointer');
 });
 
-board.addEventListener('focusin', (e) => {
+// On the HTML wrapper, not the SVG: Chrome makes an <svg> with a focus
+// listener a tab stop of its own.
+board.parentElement.addEventListener('focusin', (e) => {
   const cell = e.target.closest?.('.cell');
   if (cell) setRoving(+cell.dataset.cell);
 });

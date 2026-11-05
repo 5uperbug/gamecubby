@@ -1,0 +1,99 @@
+/* Four in a Row board. Layout, header, buttons and dialogs come from
+   shared/css/base.css and shared/css/game-shell.css. */
+
+/* The SVG itself stays transparent: the frame drawn inside it is the board,
+   and the strip above the frame is where the next disc hovers. The frame plus
+   the strip make a square, so the shared square sizing fits it exactly. */
+#board {
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.frame {
+  fill: var(--board);
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: fill 0.3s ease;
+}
+
+.frame-shadow { flood-color: rgb(40 30 10); flood-opacity: 0.12; }
+:root[data-theme="dark"] .frame-shadow { flood-color: #000; flood-opacity: 0.45; }
+
+.well {
+  fill: var(--sub-bg);
+  stroke: var(--line);
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: stroke 0.15s ease;
+}
+
+/* ------------------------------------------------------------------- discs */
+
+.disc { transform-box: fill-box; transform-origin: center; }
+.disc-x .disc-body { fill: var(--x); }
+.disc-o .disc-body { fill: var(--o); }
+
+/* The cross or ring cut into each disc: a cue that does not rely on colour. */
+.disc-cue {
+  fill: none;
+  stroke: var(--board);
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.player-mark .disc-body { stroke: none; }
+
+.title-icon circle { fill: var(--turn); stroke: none; transition: fill 0.3s ease; }
+
+/* ------------------------------------------------------------------ input */
+
+.col-hit { fill: transparent; }
+
+#board.live .col { cursor: pointer; }
+#board.live .col.full { cursor: not-allowed; }
+
+.col-tint { fill: transparent; transition: fill 0.15s ease; }
+#board.live .column.lit .col-tint { fill: color-mix(in srgb, var(--turn-soft) 75%, transparent); }
+
+/* Where the next disc would land. */
+#board.live .well.target {
+  stroke: var(--turn);
+  stroke-width: 3;
+  stroke-dasharray: 8 7;
+}
+
+.ghost { opacity: 0; transition: opacity 0.15s ease; pointer-events: none; }
+.ghost.shown { opacity: 0.45; }
+.ghost.shown.blocked { opacity: 0.15; }
+
+.col-ring {
+  fill: none;
+  stroke: var(--focus);
+  stroke-width: 4;
+  opacity: 0;
+}
+.col:focus-visible .col-ring { opacity: 1; }
+
+/* ---------------------------------------------------------------- results */
+
+/* Winner-coloured line with an outline, so it shows on discs of its own colour. */
+.win-line path { fill: none; stroke-linecap: round; }
+.win-casing { stroke: var(--board); stroke-width: 22; }
+.win-core { stroke-width: 10; }
+
+/* Finished round: the winning discs stay bright, everything else steps back. */
+#board.over .disc:not(.win) { opacity: 0.3; }
+#board.over.drawn .disc { opacity: 0.5; }
+
+/* Quiet until the round is over, then it becomes the obvious next step. */
+.btn.primary.quiet:not(:disabled) {
+  background: var(--surface);
+  color: inherit;
+}
+.btn.primary.quiet:hover:not(:disabled) { background: var(--surface-2); }
+
+/* Confetti bursts from the middle of the board. */
+.board-area .confetti { top: 50%; }

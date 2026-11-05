@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Dots and Boxes · Game Cubby</title>
+  <meta name="description" content="Dots and boxes for two players on one screen. Join the dots, close a box to claim it and go again. Most boxes wins.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f1420" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <script src="../../shared/js/theme-boot.js"></script>
+  <link rel="stylesheet" href="../../shared/css/base.css">
+  <link rel="stylesheet" href="../../shared/css/game-shell.css">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar" data-reveal>
+      <div class="title-group">
+        <a class="icon-btn back-link" href="../../" aria-label="All games" title="All games">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg>
+        </a>
+        <h1 class="page-title">
+          <svg class="title-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 4h8v8H4z"/><path class="dots" d="M20 4h0M20 12h0M4 20h0M12 20h0M20 20h0"/>
+          </svg>
+          <span class="page-title-text">Dots and Boxes</span>
+        </h1>
+      </div>
+      <nav class="top-actions" aria-label="Game menu">
+        <button class="icon-btn" id="btn-rules" type="button" aria-label="How to play">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1.1 1-1.1 1.7v.7"/><circle class="dot" cx="12" cy="17" r=".6"/></svg>
+          <span class="btn-label">Rules</span>
+        </button>
+        <button class="icon-btn" id="btn-new" type="button" aria-label="New game">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          <span class="btn-label">New game</span>
+        </button>
+        <button class="icon-btn" id="btn-theme" type="button" aria-label="Switch to dark theme">
+          <svg class="theme-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <g class="sun"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></g>
+            <path class="moon" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>
+          </svg>
+        </button>
+      </nav>
+    </header>
+
+    <main class="game">
+      <section class="status" aria-label="Game status" data-reveal>
+        <div class="players">
+          <div class="player player-x" data-player="X">
+            <svg class="player-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            <span class="player-name">Player X</span>
+            <span class="player-score" title="Boxes claimed"><span class="sr-only">Boxes: </span><span data-score="X">0</span></span>
+          </div>
+          <div class="player player-o" data-player="O">
+            <svg class="player-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/></svg>
+            <span class="player-name">Player O</span>
+            <span class="player-score" title="Boxes claimed"><span class="sr-only">Boxes: </span><span data-score="O">0</span></span>
+          </div>
+        </div>
+        <p class="hint" id="hint" aria-live="polite"></p>
+        <p class="status-note" id="match-note"></p>
+      </section>
+
+      <div class="board-area">
+        <svg id="board" class="board" role="group" aria-label="Game board" aria-describedby="hint"></svg>
+        <div class="result" id="result" hidden>
+          <div class="result-card" role="dialog" aria-modal="false" aria-labelledby="result-title">
+            <div class="confetti" aria-hidden="true"></div>
+            <svg class="result-mark" viewBox="0 0 48 48" aria-hidden="true"></svg>
+            <h2 id="result-title"></h2>
+            <p id="result-detail"></p>
+            <div class="result-actions">
+              <button type="button" class="btn" id="btn-review">See board</button>
+              <button type="button" class="btn primary" id="btn-again">Play again</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section class="controls" aria-label="Game controls" data-reveal>
+        <button type="button" class="btn" id="btn-undo">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+          <span>Undo</span>
+        </button>
+        <button type="button" class="btn primary" id="btn-play" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <span>Play again</span>
+        </button>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="sheet" id="dlg-new" aria-labelledby="dlg-new-title">
+    <form method="dialog">
+      <h2 id="dlg-new-title">New game</h2>
+      <fieldset>
+        <legend>Board size</legend>
+        <label class="choice">
+          <input type="radio" name="boardsize" value="3">
+          <span>
+            <strong>3×3 boxes</strong>
+            <small>A quick game: 24 lines to draw.</small>
+          </span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="boardsize" value="4" checked>
+          <span>
+            <strong>4×4 boxes</strong>
+            <small>The usual game: 40 lines. Eight boxes each is a draw.</small>
+          </span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="boardsize" value="5">
+          <span>
+            <strong>5×5 boxes</strong>
+            <small>A longer game: 60 lines, with more room for long chains.</small>
+          </span>
+        </label>
+      </fieldset>
+      <label class="toggle">
+        <input type="checkbox" name="resetwins">
+        <span class="toggle-track" aria-hidden="true"></span>
+        <span>Reset the games-won count</span>
+      </label>
+      <div class="sheet-actions">
+        <button class="btn" value="cancel" formnovalidate>Cancel</button>
+        <button class="btn primary" value="start">Start game</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="sheet" id="dlg-rules" aria-labelledby="dlg-rules-title">
+    <form method="dialog">
+      <h2 id="dlg-rules-title">How to play</h2>
+      <div class="sheet-text">
+        <p>Take turns drawing a line between two dots that sit next to each other, across or down.</p>
+        <ol>
+          <li><strong>Close a box</strong> by drawing its fourth side. It’s yours: your mark goes in.</li>
+          <li><strong>Go again.</strong> Closing a box means you must draw another line. One line can close two boxes at once.</li>
+          <li><strong>Otherwise</strong> the turn passes to the other player.</li>
+        </ol>
+        <p>When every line is drawn, the player with more boxes wins. On a 4×4 board, eight boxes each is a draw.</p>
+        <p>Tip: try not to draw the third side of a box. Your opponent can close it and go again.</p>
+        <p class="note">Keyboard: arrow keys move between lines, Enter or Space draws. Ctrl+Z undoes.</p>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn primary" value="close">Got it</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

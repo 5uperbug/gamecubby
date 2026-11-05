@@ -1,0 +1,203 @@
+/* Order and Chaos: role colours, player pills, the 6×6 board and the X/O
+   buttons. Layout, header, buttons and dialogs come from
+   shared/css/base.css and shared/css/game-shell.css. */
+
+/* Both players use both symbols, so marks keep the X and O colours and the
+   two roles get colours of their own. */
+:root {
+  --order: #12866f;
+  --order-soft: #d7efe7;
+  --chaos: #ad6f00;
+  --chaos-soft: #f6e7c6;
+}
+
+:root[data-theme="dark"] {
+  --order: #23ad8b;
+  --order-soft: #183933;
+  --chaos: #d9951f;
+  --chaos-soft: #3b2f18;
+}
+
+/* The accent (title icon, primary buttons, selection) is the role to move. */
+body { --turn: var(--order); --turn-soft: var(--order-soft); }
+body.turn-chaos { --turn: var(--chaos); --turn-soft: var(--chaos-soft); }
+
+/* ------------------------------------------------------------------ roles */
+
+.role {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px 2px 6px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.role[data-role="order"] {
+  color: color-mix(in srgb, var(--order) 78%, var(--ink));
+  background: var(--order-soft);
+}
+
+.role[data-role="chaos"] {
+  color: color-mix(in srgb, var(--chaos) 78%, var(--ink));
+  background: var(--chaos-soft);
+}
+
+.role-icon {
+  width: 15px; height: 15px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;
+}
+.role-icon circle { fill: currentColor; stroke: none; }
+.role[data-role="order"] .icon-chaos,
+.role[data-role="chaos"] .icon-order { display: none; }
+
+/* A role chip on its way to the other player between rounds. */
+.role.flying {
+  position: fixed;
+  z-index: 20;
+  margin: 0;
+  pointer-events: none;
+  box-shadow: var(--shadow);
+}
+
+.role-word.order { color: color-mix(in srgb, var(--order) 78%, var(--ink)); }
+.role-word.chaos { color: color-mix(in srgb, var(--chaos) 78%, var(--ink)); }
+
+/* ---------------------------------------------------------------- players */
+
+.player {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "name score" "role score";
+  align-items: center;
+  row-gap: 3px;
+}
+
+.player-name { grid-area: name; }
+.player .role { grid-area: role; justify-self: start; }
+.player-score { grid-area: score; }
+
+.player.active[data-role="order"] {
+  border-color: var(--order);
+  background: color-mix(in srgb, var(--order-soft) 60%, var(--surface));
+}
+
+.player.active[data-role="chaos"] {
+  border-color: var(--chaos);
+  background: color-mix(in srgb, var(--chaos-soft) 60%, var(--surface));
+}
+
+.hint strong.order { color: color-mix(in srgb, var(--order) 78%, var(--ink)); }
+.hint strong.chaos { color: color-mix(in srgb, var(--chaos) 78%, var(--ink)); }
+
+/* ------------------------------------------------------------------ board */
+
+.grid path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--line-strong) 50%, var(--board));
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.cell-hit {
+  fill: transparent;
+  stroke: transparent;
+  transition: fill 0.15s ease;
+}
+
+.cell .slot .mark path { stroke-width: 5; }
+
+#board.live .cell { cursor: pointer; }
+#board.live .cell:not(.filled):not(.selected):hover .cell-hit {
+  fill: color-mix(in srgb, var(--turn-soft) 80%, transparent);
+}
+.cell:focus-visible .cell-hit { stroke: var(--focus); stroke-width: 2.5; }
+
+/* The most recent move, so the next player can see what changed. */
+.cell.last .cell-hit { fill: color-mix(in srgb, var(--line) 40%, transparent); }
+
+/* The selected square, waiting for X or O. */
+.cursor { opacity: 0; pointer-events: none; transition: opacity 0.15s ease; }
+.cursor.on { opacity: 1; }
+.cursor-box {
+  fill: var(--turn-soft);
+  stroke: var(--turn);
+  stroke-width: 2.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: fill 0.3s ease, stroke 0.3s ease;
+}
+
+/* Optional threat marks: a small symbol in the corner of a square where it
+   would complete five. */
+.tip { opacity: 0.75; pointer-events: none; }
+.tip .mark path { stroke-width: 2.4; }
+
+.win-line {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+/* Finished round. Order: the five stay bright and the rest step back.
+   Chaos: the full board takes on Chaos's colour. */
+#board.over .cell:not(.win) .slot .mark { opacity: 0.25; }
+#board.over.won-chaos .cell .slot .mark { opacity: 0.6; }
+#board.won-chaos { background: color-mix(in srgb, var(--chaos-soft) 55%, var(--board)); }
+#board.over .cell.last .cell-hit { fill: transparent; }
+
+/* --------------------------------------------------------------- controls */
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas: "x o" "undo round";
+  gap: 8px;
+}
+
+#btn-x { grid-area: x; }
+#btn-o { grid-area: o; }
+#btn-undo { grid-area: undo; }
+#btn-round { grid-area: round; }
+
+.place-btn { min-height: 56px; }
+
+.controls .btn.place-btn svg {
+  display: block;
+  width: 34px; height: 34px;
+  stroke-width: 2.8;
+}
+#btn-x svg { stroke: var(--x); }
+#btn-o svg { stroke: var(--o); }
+
+/* Lit up once a square is selected: choosing the symbol plays the move. */
+#btn-x:not(:disabled) {
+  background: color-mix(in srgb, var(--x-soft) 70%, var(--surface));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--x) 55%, transparent), var(--shadow);
+}
+#btn-o:not(:disabled) {
+  background: color-mix(in srgb, var(--o-soft) 70%, var(--surface));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--o) 55%, transparent), var(--shadow);
+}
+#btn-x:hover:not(:disabled) { background: var(--x-soft); }
+#btn-o:hover:not(:disabled) { background: var(--o-soft); }
+
+/* Quiet until the round is over, then it becomes the obvious next step. */
+.btn.primary.quiet:not(:disabled) {
+  background: var(--surface);
+  color: inherit;
+}
+.btn.primary.quiet:hover:not(:disabled) { background: var(--surface-2); }
+
+/* Confetti bursts from the middle of the board. */
+.board-area .confetti { top: 50%; }
+
+@media (orientation: landscape) and (min-width: 560px) and (max-height: 520px) {
+  .place-btn { min-height: 46px; }
+  .controls .btn.place-btn svg { width: 28px; height: 28px; }
+}

@@ -17,8 +17,11 @@
 .cell .mark path { stroke-width: 9; }
 
 #board.live .cell { cursor: pointer; }
-#board.live .cell:not(.filled):hover .cell-hit {
-  fill: color-mix(in srgb, var(--turn-soft) 80%, transparent);
+/* Only where hover is real: touch screens leave it stuck on the last tap. */
+@media (hover: hover) {
+  #board.live .cell:not(.filled):hover .cell-hit {
+    fill: color-mix(in srgb, var(--turn-soft) 80%, transparent);
+  }
 }
 .cell:focus-visible .cell-hit { stroke: var(--focus); stroke-width: 3; }
 
