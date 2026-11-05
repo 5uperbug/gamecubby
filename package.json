@@ -1,0 +1,12 @@
+{
+  "name": "megatictacktoe",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ultimate (mega) tic-tac-toe in the browser.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "start": "python3 -m http.server 8000"
+  },
+  "license": "MIT"
+}
