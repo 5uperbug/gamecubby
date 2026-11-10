@@ -10,6 +10,10 @@ import * as rev from '../site/games/reversi/game.js';
 import revBot from '../site/games/reversi/bot.js';
 import * as nk from '../site/games/notakto/game.js';
 import nkBot from '../site/games/notakto/bot.js';
+import * as dab from '../site/games/dots-and-boxes/game.js';
+import dabBot from '../site/games/dots-and-boxes/bot.js';
+import * as mega from '../site/games/mega-tic-tac-toe/game.js';
+import megaBot from '../site/games/mega-tic-tac-toe/bot.js';
 
 /** Plays random legal moves from `state` until `stop(state)` or the game ends. */
 function randomPlay(state, adapter, plies, rng = Math.random) {
@@ -100,3 +104,42 @@ function timed(name, fresh, adapter, limit = 1000) {
 timed('four-in-a-row', () => four.createRound(), fourBot);
 timed('reversi', () => rev.createRound(), revBot);
 timed('notakto', () => nk.createRound({ boardCount: 3 }), nkBot);
+
+for (const size of dab.SIZES) {
+  legalFrom(`dots-and-boxes (${size}×${size})`, () => dab.createGame(size), dabBot, dab.isLegal, [0, 10, 25]);
+}
+for (const openBoards of [false, true]) {
+  legalFrom(`mega-tic-tac-toe (${openBoards ? 'open' : 'classic'})`, () => mega.createGame({ openBoards }), megaBot,
+    (s, [b, c]) => mega.isLegalMove(s, b, c), [0, 10, 30]);
+}
+
+test('dots-and-boxes: hard takes a box on offer and does not give one away', () => {
+  // 3×3: draw three sides of the top-left box (top, left, bottom), leaving its right side.
+  const n = 3;
+  const top = dab.hLine(n, 0, 0);
+  const bottom = dab.hLine(n, 1, 0);
+  const left = dab.vLine(n, 0, 0);
+  const right = dab.vLine(n, 0, 1);
+  let g = dab.replay(n, dab.X, [top, dab.hLine(n, 3, 2), left, dab.vLine(n, 2, 3), bottom]);
+  assert.equal(pickMove(g, dabBot, g.turn, 'hard'), right);
+  // Fresh board, one move in: no reply should give the opponent a 3-sided box.
+  g = dab.replay(n, dab.X, [top]);
+  for (let k = 0; k < 5; k += 1) {
+    const after = dab.play(g, pickMove(g, dabBot, g.turn, 'hard'));
+    const offered = after.boxes.some((owner, b) => owner === null
+      && dab.sidesOf(n, b).filter((l) => after.lines[l] !== null).length === 3);
+    assert.equal(offered, false);
+  }
+});
+
+test('mega-tic-tac-toe: hard wins a small board when it can', () => {
+  // X holds cells 0 and 1 of the centre board and is sent back there: cell 2 wins it.
+  const s = mega.replay({}, [
+    { board: 4, cell: 0 }, { board: 0, cell: 4 }, { board: 4, cell: 1 }, { board: 1, cell: 4 },
+  ]);
+  assert.deepEqual(mega.playableBoards(s), [4]);
+  assert.deepEqual(pickMove(s, megaBot, s.turn, 'hard'), [4, 2]);
+});
+
+timed('dots-and-boxes', () => dab.createGame(5), dabBot);
+timed('mega-tic-tac-toe', () => mega.createGame(), megaBot);

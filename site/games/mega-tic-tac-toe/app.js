@@ -9,6 +9,11 @@ import {
   confetti, openDialog, pop, reveal, shake,
 } from '../../shared/js/effects.js';
 import { createStore } from '../../shared/js/storage.js';
+import {
+  OPPONENTS, isBot, pickMove, think,
+} from '../../shared/js/bot.js';
+import { addOpponentChoice, labelPlayers } from '../../shared/js/opponent.js';
+import bot from './bot.js';
 import { initThemeToggle } from '../../shared/js/theme.js';
 
 const store = createStore('mega-tic-tac-toe');
@@ -27,8 +32,25 @@ const ui = {
   shown: { turn: null, hint: '', scores: { X: 0, O: 0 } },
 };
 
+const BOT = O; // the bot always plays O
+
 let prefs = { autoZoom: false, ...store.get('prefs') };
+let opponent = OPPONENTS.includes(store.get('game')?.opponent) ? store.get('game').opponent : 'human';
 let state = loadGame();
+
+const vsBot = () => isBot(opponent);
+const botsTurn = () => vsBot() && !state.winner && state.turn === BOT;
+
+/** Moves to take back so it is a person's turn again (0 if there are none). */
+function undoSteps() {
+  if (!vsBot()) return state.history.length ? 1 : 0;
+  let s = state;
+  for (let n = 1; n <= state.history.length; n += 1) {
+    s = undoGame(s);
+    if (s.turn !== BOT) return n;
+  }
+  return 0;
+}
 
 function loadGame() {
   const saved = store.get('game');
@@ -42,7 +64,7 @@ function loadGame() {
 }
 
 function saveGame() {
-  store.set('game', { rules: state.rules, moves: state.history.map((m) => [m.board, m.cell]) });
+  store.set('game', { rules: state.rules, moves: state.history.map((m) => [m.board, m.cell]), opponent });
 }
 
 const view = new BoardView($('#board'), { onBoard, onCell });
@@ -60,6 +82,7 @@ function hintFor() {
     return `${tag(player)} played the ${POSITION_NAMES[cell]} cell of the ${where(board)} board.`;
   }
   const p = tag(state.turn);
+  if (botsTurn()) return `${tag(BOT)} (bot) is ${ui.pending ? 'playing here' : 'thinking'}…`;
   if (ui.mode === 'zoom') {
     if (ui.pending) return `${p}: confirm your move, or tap another cell.`;
     return `${p}: place your mark in the ${where(ui.board)} board.`;
@@ -88,6 +111,7 @@ function refresh() {
   document.body.classList.toggle('rules-open', state.rules.openBoards);
   document.body.classList.toggle('game-over', over);
 
+  labelPlayers(vsBot() && BOT);
   for (const pill of document.querySelectorAll('.player')) {
     const active = over ? pill.dataset.player === state.winner : pill.dataset.player === state.turn;
     pill.classList.toggle('active', active);
@@ -114,7 +138,7 @@ function refresh() {
   }
 
   $('#rules-note').textContent = state.rules.openBoards ? 'Rules: open boards variant' : 'Rules: classic';
-  $('#btn-undo').disabled = ui.busy || !state.history.length;
+  $('#btn-undo').disabled = ui.busy || !undoSteps();
   $('#btn-back').disabled = ui.busy || ui.mode !== 'zoom';
   $('#btn-confirm').disabled = ui.busy || !ui.pending;
   view.labelBoards(state, ui.mode === 'overview' ? playableBoards(state) : []);
@@ -124,7 +148,7 @@ function refresh() {
 
 async function onBoard(b, how) {
   ui.keyboard = how === 'keyboard';
-  if (ui.busy || state.winner) return;
+  if (ui.busy || state.winner || botsTurn()) return;
   if (!playableBoards(state).includes(b)) {
     view.shake(b);
     shake($('#hint'));
@@ -150,7 +174,7 @@ async function zoomIn(b) {
 
 function onCell(b, c, how) {
   ui.keyboard = how === 'keyboard';
-  if (ui.busy || ui.mode !== 'zoom' || b !== ui.board) return;
+  if (ui.busy || ui.mode !== 'zoom' || b !== ui.board || botsTurn()) return;
   if (!isLegalMove(state, b, c)) {
     view.shakeCell(b, c);
     return;
@@ -192,6 +216,15 @@ async function confirmMove() {
     return;
   }
 
+  if (botsTurn()) {
+    const boards = playableBoards(state);
+    await view.sendTo(b, c, boards, state.turn);
+    await view.highlight(boards, state.turn);
+    ui.busy = false;
+    botTurn();
+    return;
+  }
+
   const boards = playableBoards(state);
   await view.sendTo(b, c, boards, state.turn);
   await view.highlight(boards, state.turn);
@@ -204,6 +237,30 @@ async function confirmMove() {
   } else if (ui.keyboard) {
     view.focusBoard(boards[0]);
   }
+}
+
+/** Plays the bot's move the way a person would: zoom in, place, confirm. */
+async function botTurn() {
+  if (ui.busy || !botsTurn()) return;
+  ui.busy = true;
+  refresh();
+  await think();
+  if (!botsTurn()) {
+    ui.busy = false;
+    refresh();
+    return;
+  }
+  const [b, c] = pickMove(state, bot, BOT, opponent);
+  ui.mode = 'zoom';
+  ui.board = b;
+  refresh();
+  await view.zoomIn(b);
+  ui.pending = { b, c };
+  view.showPending(b, c, state.turn);
+  refresh();
+  await wait(ms(400));
+  ui.busy = false;
+  confirmMove();
 }
 
 async function backToOverview() {
@@ -223,7 +280,8 @@ async function backToOverview() {
 }
 
 async function undoMove() {
-  if (ui.busy || !state.history.length) return;
+  const steps = undoSteps();
+  if (ui.busy || !steps) return;
   ui.busy = true;
   hideResult(false);
   view.clearPending();
@@ -235,19 +293,21 @@ async function undoMove() {
     await view.zoomOut();
   }
   refresh();
-  const last = state.history.at(-1);
-  const prev = undoGame(state);
   view.clearHighlight();
-  await view.takeBack(last, prev.boards[last.board] !== state.boards[last.board]);
-  state = prev;
+  for (let i = 0; i < steps; i += 1) {
+    const last = state.history.at(-1);
+    const prev = undoGame(state);
+    await view.takeBack(last, prev.boards[last.board] !== state.boards[last.board]);
+    state = prev;
+    view.sync(state);
+  }
   saveGame();
-  view.sync(state);
   await view.highlight(playableBoards(state), state.turn);
   ui.busy = false;
   refresh();
 }
 
-async function newGame(rules) {
+async function newGame(rules, against = opponent) {
   if (ui.busy) return;
   ui.busy = true;
   hideResult(false);
@@ -262,6 +322,7 @@ async function newGame(rules) {
   view.clearHighlight();
   await view.clearAway();
   state = createGame(rules);
+  opponent = against;
   saveGame();
   view.sync(state);
   refresh();
@@ -269,6 +330,7 @@ async function newGame(rules) {
   await view.highlight(playableBoards(state), state.turn);
   ui.busy = false;
   refresh();
+  botTurn();
 }
 
 // ------------------------------------------------------------------ result
@@ -314,10 +376,12 @@ async function hideResult(animated = true) {
 
 const newDialog = $('#dlg-new');
 const newForm = newDialog.querySelector('form');
+addOpponentChoice(newForm, 'X');
 
 $('#btn-new').addEventListener('click', () => {
   newForm.variant.value = state.rules.openBoards ? 'open' : 'classic';
   newForm.autozoom.checked = prefs.autoZoom;
+  newForm.elements.opponent.value = opponent;
   newDialog.returnValue = '';
   openDialog(newDialog);
 });
@@ -326,7 +390,7 @@ newDialog.addEventListener('close', () => {
   if (newDialog.returnValue !== 'start') return;
   prefs = { ...prefs, autoZoom: newForm.autozoom.checked };
   store.set('prefs', prefs);
-  newGame({ openBoards: newForm.variant.value === 'open' });
+  newGame({ openBoards: newForm.variant.value === 'open' }, newForm.elements.opponent.value);
 });
 
 $('#btn-rules').addEventListener('click', () => openDialog($('#dlg-rules')));
@@ -371,6 +435,7 @@ async function boot() {
   ui.busy = false;
   refresh();
   if (state.winner) showResult();
+  botTurn();
 }
 
 boot();

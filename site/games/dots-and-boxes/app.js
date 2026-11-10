@@ -14,6 +14,11 @@ import {
   confetti, fadeIntoClass, openDialog, pop, reveal, shake,
 } from '../../shared/js/effects.js';
 import { createStore } from '../../shared/js/storage.js';
+import {
+  OPPONENTS, isBot, pickMove, think,
+} from '../../shared/js/bot.js';
+import { addOpponentChoice, labelPlayers } from '../../shared/js/opponent.js';
+import bot from './bot.js';
 import { initThemeToggle } from '../../shared/js/theme.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -21,23 +26,41 @@ const store = createStore('dots-and-boxes');
 
 // ------------------------------------------------------------------- state
 
+const BOT = O; // the bot always plays O
+
 const freshWins = () => ({ X: 0, O: 0, D: 0 });
 
 function loadMatch() {
   const saved = store.get('match');
   const wins = freshWins();
-  if (!saved || typeof saved !== 'object') return { wins, game: createGame() };
+  if (!saved || typeof saved !== 'object') return { wins, game: createGame(), opponent: 'human' };
   for (const key of Object.keys(wins)) {
     const n = saved.wins?.[key];
     if (Number.isInteger(n) && n >= 0) wins[key] = n;
   }
   const moves = Array.isArray(saved.moves) ? saved.moves : [];
-  return { wins, game: replay(saved.size, saved.starter, moves) };
+  const opponent = OPPONENTS.includes(saved.opponent) ? saved.opponent : 'human';
+  return { wins, game: replay(saved.size, saved.starter, moves), opponent };
 }
 
 const loaded = loadMatch();
 let wins = loaded.wins;
 let game = loaded.game;
+let { opponent } = loaded;
+
+const vsBot = () => isBot(opponent);
+const botsTurn = () => vsBot() && !game.winner && game.turn === BOT;
+
+/** Moves to take back so it is a person's turn again (0 if there are none). */
+function undoSteps() {
+  if (!vsBot()) return game.moves.length ? 1 : 0;
+  let g = game;
+  for (let n = 1; n <= game.moves.length; n += 1) {
+    g = undoGame(g);
+    if (g.turn !== BOT) return n;
+  }
+  return 0;
+}
 
 const ui = {
   busy: false, // an animation owns the board
@@ -46,7 +69,7 @@ const ui = {
 
 function save() {
   store.set('match', {
-    wins, size: game.size, starter: game.starter, moves: game.moves,
+    wins, size: game.size, starter: game.starter, moves: game.moves, opponent,
   });
 }
 
@@ -204,6 +227,10 @@ function hintFor() {
     return `${tag(game.winner)} wins, ${won} boxes to ${lost}!`;
   }
   const p = tag(game.turn);
+  if (botsTurn()) {
+    const closed = game.last?.player === BOT && game.last.boxes.length;
+    return `${tag(BOT)} (bot) ${closed ? 'closed a box and goes again' : 'is thinking'}…`;
+  }
   if (!game.moves.length) return `${p} goes first. Tap between two dots to draw a line.`;
   const closed = game.last.boxes.length;
   if (closed) return `${p} closed ${closed === 2 ? 'two boxes' : 'a box'}. <strong>Go again!</strong>`;
@@ -218,6 +245,7 @@ function refresh({ holdScores = false } = {}) {
   document.body.classList.toggle('turn-o', accent === O);
   document.body.classList.toggle('turn-x', accent === X);
 
+  labelPlayers(vsBot() && BOT);
   for (const pill of document.querySelectorAll('.player')) {
     const on = pill.dataset.player === active;
     pill.classList.toggle('active', on);
@@ -246,9 +274,9 @@ function refresh({ holdScores = false } = {}) {
   const n = game.size;
   const draws = wins.D ? ` · Draws: ${wins.D}` : '';
   $('#match-note').textContent = `${n}×${n} boxes · Games won: X ${wins.X}, O ${wins.O}${draws}`;
-  $('#btn-undo').disabled = ui.busy || !game.moves.length;
+  $('#btn-undo').disabled = ui.busy || !undoSteps();
   $('#btn-play').disabled = ui.busy || !over;
-  board.classList.toggle('live', !over && !ui.busy);
+  board.classList.toggle('live', !over && !ui.busy && !botsTurn());
 }
 
 // -------------------------------------------------------------- animations
@@ -364,8 +392,8 @@ async function takeBack({ line, boxes }) {
 
 // -------------------------------------------------------------------- flow
 
-async function drawLine(line) {
-  if (ui.busy) return;
+async function drawLine(line, how) {
+  if (ui.busy || (how !== 'bot' && botsTurn())) return;
   if (game.winner) {
     // The game is over: point at the way forward.
     shake($('#hint'));
@@ -396,24 +424,39 @@ async function drawLine(line) {
   refresh();
   if (game.winner) showResult();
   else if (boxes.length) goAgain();
+  botTurn();
+}
+
+/** Plays the bot's move if it is the bot's turn. */
+async function botTurn() {
+  if (ui.busy || !botsTurn()) return;
+  ui.busy = true;
+  refresh();
+  await think();
+  ui.busy = false;
+  if (botsTurn()) drawLine(pickMove(game, bot, BOT, opponent), 'bot');
+  else refresh();
 }
 
 async function undoMove() {
-  if (ui.busy || !game.moves.length) return;
+  const steps = undoSteps();
+  if (ui.busy || !steps) return;
   ui.busy = true;
   hideResult(false);
   refresh();
-  const { last, winner } = game;
-  await takeBack(last);
-  game = undoGame(game);
+  const { winner } = game;
+  for (let i = 0; i < steps; i += 1) {
+    await takeBack(game.last);
+    game = undoGame(game);
+    sync();
+  }
   if (winner) wins[winner] = Math.max(0, wins[winner] - 1);
   save();
-  sync();
   ui.busy = false;
   refresh();
 }
 
-async function newGame(size = game.size, { resetWins = false } = {}) {
+async function newGame(size = game.size, { resetWins = false, against = opponent } = {}) {
   if (ui.busy) return;
   ui.busy = true;
   hideResult(false);
@@ -421,11 +464,12 @@ async function newGame(size = game.size, { resetWins = false } = {}) {
   await sweep();
   // Players take turns going first. A game with no lines drawn does not count.
   let starter = game.moves.length ? other(game.starter) : game.starter;
-  if (resetWins) {
+  if (resetWins || against !== opponent) {
     wins = freshWins();
     starter = X;
   }
   game = createGame(size, starter);
+  opponent = against;
   save();
   sync();
   setRoving(0);
@@ -433,6 +477,7 @@ async function newGame(size = game.size, { resetWins = false } = {}) {
   await intro();
   ui.busy = false;
   refresh();
+  botTurn();
 }
 
 // ------------------------------------------------------------------ result
@@ -527,17 +572,21 @@ $('#btn-review').addEventListener('click', async (e) => {
 
 const newDialog = $('#dlg-new');
 const newForm = newDialog.querySelector('form');
+addOpponentChoice(newForm, 'X');
 
 $('#btn-new').addEventListener('click', () => {
   newForm.elements.boardsize.value = String(game.size);
   newForm.elements.resetwins.checked = false;
+  newForm.elements.opponent.value = opponent;
   newDialog.returnValue = '';
   openDialog(newDialog);
 });
 
 newDialog.addEventListener('close', () => {
   if (newDialog.returnValue !== 'start') return;
-  newGame(Number(newForm.elements.boardsize.value), { resetWins: newForm.elements.resetwins.checked });
+  newGame(Number(newForm.elements.boardsize.value), {
+    resetWins: newForm.elements.resetwins.checked, against: newForm.elements.opponent.value,
+  });
 });
 
 $('#btn-rules').addEventListener('click', () => openDialog($('#dlg-rules')));
@@ -565,6 +614,7 @@ async function boot() {
   ui.busy = false;
   refresh();
   if (game.winner) showResult();
+  botTurn();
 }
 
 boot();
