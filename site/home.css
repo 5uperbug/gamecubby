@@ -1,18 +1,57 @@
 /* Home page: the game picker. Shared tokens, header and buttons come from
    shared/css/base.css. */
 
-:root { --page-max: 1040px; }
+:root {
+  --page-max: 1040px;
+}
 
 /* The logo: a cubbyhole shelf holding pieces from three games. */
-.logo { width: 34px; height: 34px; flex: none; overflow: visible; }
-.logo-body { transform-box: fill-box; transform-origin: center; }
-.logo-frame { fill: var(--surface); stroke: var(--ink); stroke-width: 5; }
-.logo-shelf { fill: none; stroke: var(--ink); stroke-width: 5; }
-.logo-disc.disc-x { fill: var(--x); }
-.logo-disc.disc-o { fill: var(--o); }
-.logo-x, .logo-o { fill: none; stroke-width: 4.6; stroke-linecap: round; }
-.logo-x { stroke: var(--x); }
-.logo-o { stroke: var(--o); }
+.logo {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  overflow: visible;
+}
+
+.logo-body {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.logo-frame {
+  fill: var(--surface);
+  stroke: var(--ink);
+  stroke-width: 5;
+}
+
+.logo-shelf {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 5;
+}
+
+.logo-disc.disc-x {
+  fill: var(--x);
+}
+
+.logo-disc.disc-o {
+  fill: var(--o);
+}
+
+.logo-x,
+.logo-o {
+  fill: none;
+  stroke-width: 4.6;
+  stroke-linecap: round;
+}
+
+.logo-x {
+  stroke: var(--x);
+}
+
+.logo-o {
+  stroke: var(--o);
+}
 
 .home {
   max-width: var(--page-max);
@@ -20,7 +59,9 @@
   padding: 0 16px 48px;
 }
 
-.intro { padding: clamp(16px, 5vw, 48px) 0 clamp(18px, 3.5vw, 32px); }
+.intro {
+  padding: clamp(16px, 5vw, 48px) 0 clamp(18px, 3.5vw, 32px);
+}
 
 .intro h1 {
   margin: 0;
@@ -32,7 +73,6 @@
 
 .intro p {
   margin: 10px 0 0;
-  max-width: 38ch;
   font-size: clamp(1rem, 0.95rem + 0.3vw, 1.15rem);
   line-height: 1.45;
   color: var(--muted);
@@ -49,7 +89,9 @@
   gap: clamp(14px, 2vw, 22px);
 }
 
-.game-list > li { display: flex; }
+.game-list>li {
+  display: flex;
+}
 
 .game-card {
   --accent: var(--x);
@@ -66,7 +108,10 @@
   transition: transform 0.25s ease, box-shadow 0.25s ease, background-color 0.3s ease;
 }
 
-.game-card[data-accent="o"] { --accent: var(--o); --accent-soft: var(--o-soft); }
+.game-card[data-accent="o"] {
+  --accent: var(--o);
+  --accent-soft: var(--o-soft);
+}
 
 .game-card:hover,
 .game-card:focus-visible {
@@ -74,7 +119,10 @@
   box-shadow: var(--shadow-lift);
 }
 
-.game-card:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.game-card:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
 
 .card-art {
   position: relative;
@@ -86,7 +134,12 @@
 }
 
 /* Absolutely placed so the square SVG cannot stretch the 16:10 frame. */
-.preview { position: absolute; inset: 0; width: 100%; height: 100%; }
+.preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
 
 .card-body {
   display: grid;
@@ -138,31 +191,92 @@
 }
 
 .card-cta svg {
-  width: 18px; height: 18px;
-  fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   transition: transform 0.25s ease;
 }
 
 .game-card:hover .card-cta svg,
-.game-card:focus-visible .card-cta svg { transform: translateX(4px); }
+.game-card:focus-visible .card-cta svg {
+  transform: translateX(4px);
+}
 
 /* ------------------------------------------------------- board previews */
 
-.pv-board { fill: var(--board); }
+.pv-board {
+  fill: var(--board);
+}
 
 /* Mega */
-.pv-sub-bg { fill: var(--sub-bg); }
-.pv-sub-grid line { stroke: var(--line); stroke-width: 1.6; stroke-linecap: round; }
-.pv-macro path { fill: none; stroke: var(--line-strong); stroke-width: 3.4; stroke-linecap: round; }
-.pv-small .mark path { stroke-width: 4.4; }
-.pv-sub.won .pv-small { opacity: 0.28; }
-.pv-sub.won-x .pv-sub-bg { fill: var(--x-soft); }
-.pv-sub.won-o .pv-sub-bg { fill: var(--o-soft); }
-.pv-sub-win { fill: none; stroke-width: 3; stroke-linecap: round; opacity: 0.3; }
-.pv-big .mark path { stroke-width: 11; }
-.pv-ring { fill: none; stroke: var(--o); stroke-width: 3; }
+.pv-sub-bg {
+  fill: var(--sub-bg);
+}
+
+.pv-sub-grid line {
+  stroke: var(--line);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.pv-macro path {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+}
+
+.pv-small .mark path {
+  stroke-width: 4.4;
+}
+
+.pv-sub.won .pv-small {
+  opacity: 0.28;
+}
+
+.pv-sub.won-x .pv-sub-bg {
+  fill: var(--x-soft);
+}
+
+.pv-sub.won-o .pv-sub-bg {
+  fill: var(--o-soft);
+}
+
+.pv-sub-win {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0.3;
+}
+
+.pv-big .mark path {
+  stroke-width: 11;
+}
+
+.pv-ring {
+  fill: none;
+  stroke: var(--o);
+  stroke-width: 3;
+}
 
 /* Classic */
-.pv-grid path { fill: none; stroke: var(--line-strong); stroke-width: 6; stroke-linecap: round; }
-.pv-cells .mark path { stroke-width: 13; }
-.pv-win { fill: none; stroke-width: 11; stroke-linecap: round; }
+.pv-grid path {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.pv-cells .mark path {
+  stroke-width: 13;
+}
+
+.pv-win {
+  fill: none;
+  stroke-width: 11;
+  stroke-linecap: round;
+}

@@ -5,7 +5,7 @@ import {
   X, O, DRAW, COLS, ROWS, cellAt, colOf, rowOf, createRound, isLegal, landingRow, lastCell,
   lineKind, other, play, replayRound, undo as undoRound,
 } from './game.js';
-import { createDisc, fallKeyframes } from './disc.js';
+import { createDisc, fallKeyframes } from '../../shared/js/disc.js';
 import {
   animate, utils, motion, ms, stag, clearInline,
 } from '../../shared/js/motion.js';

@@ -1,0 +1,91 @@
+/* Hex board. Layout, header, buttons and dialogs come from
+   shared/css/base.css and shared/css/game-shell.css. */
+
+.title-icon { stroke-width: 1.6; }
+
+/* The rhombus is wider than tall: the largest box of its shape (--ratio, set
+   by app.js) that fits the board area, instead of the shared square. */
+#board {
+  width: min(100cqw, calc(100cqh * var(--ratio, 1.6)));
+  height: auto;
+  aspect-ratio: var(--ratio, 1.6);
+}
+
+/* Everything that animates scales around its own centre. */
+.cell, .stone {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Each player's two edges, half hidden under the outer cells. */
+.edge {
+  fill: none;
+  stroke-width: 16;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cell-hex {
+  fill: var(--sub-bg);
+  stroke: var(--line);
+  stroke-width: 2;
+  transition: fill 0.15s ease;
+}
+
+/* ------------------------------------------------------------------ stones */
+
+.stone-x .stone-body { fill: var(--x); }
+.stone-o .stone-body { fill: var(--o); }
+
+/* The cross or ring cut into each stone: a cue that does not rely on colour. */
+.stone .stone-cue * {
+  fill: none;
+  stroke: var(--board);
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+
+.player-mark .stone-body { stroke: none; }
+.result-mark .stone .stone-cue path { stroke-width: 4; }
+
+/* The newest stone gets an outline, so the next player can see what changed. */
+.cell.last .stone-body {
+  stroke: var(--line-strong);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+/* ------------------------------------------------------------------- input */
+
+#board.live .cell:not(.filled) { cursor: pointer; }
+
+/* Only where hover is real: touch screens leave it stuck on the last tap. */
+@media (hover: hover) {
+  #board.live .cell:not(.filled):hover .cell-hex { fill: var(--turn-soft); }
+}
+#board.live .cell:not(.filled):focus-visible .cell-hex { fill: var(--turn-soft); }
+
+.focus-ring {
+  fill: none;
+  stroke: var(--focus);
+  stroke-width: 4;
+  stroke-linejoin: round;
+  pointer-events: none;
+  opacity: 0;
+}
+.focus-ring.shown { opacity: 1; }
+
+.cells .slot, .fx { pointer-events: none; }
+
+/* ---------------------------------------------------------------- results */
+
+/* Winner-coloured line with an outline, so it shows on stones of its own colour. */
+.chain path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.chain-casing { stroke: var(--board); stroke-width: 14; }
+.chain-core { stroke-width: 6; }
+
+/* Finished game: the winning chain stays bright, everything else steps back. */
+#board.over .stone:not(.win) { opacity: 0.3; }
+#board.over .cell.last .stone-body { stroke: none; }
+
+#btn-swap[hidden] { display: none; }

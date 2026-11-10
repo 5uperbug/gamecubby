@@ -1,0 +1,91 @@
+/* Reversi board. Layout, header, buttons and dialogs come from
+   shared/css/base.css and shared/css/game-shell.css. */
+
+.title-icon .solid { fill: var(--turn); stroke: none; transition: fill 0.3s ease; }
+
+/* ---------------------------------------------------------------- players */
+
+.player-info {
+  display: grid;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.disc-count {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.player-mark .disc-body { stroke: none; }
+
+/* ------------------------------------------------------------------ board */
+
+.grid path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--line-strong) 50%, var(--board));
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.cell-hit {
+  fill: transparent;
+  stroke: transparent;
+  transition: fill 0.15s ease;
+}
+
+/* ------------------------------------------------------------------- discs */
+
+.disc { transform-box: fill-box; transform-origin: center; transition: opacity 0.3s ease; }
+.disc-x .disc-body { fill: var(--x); }
+.disc-o .disc-body { fill: var(--o); }
+
+/* The cross or ring cut into each disc: a cue that does not rely on colour. */
+.disc-cue {
+  fill: none;
+  stroke: var(--board);
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+/* ------------------------------------------------------------------ input */
+
+/* Where the player to move may play: a small dot in their colour. */
+.move-dot {
+  fill: var(--turn);
+  opacity: 0;
+  transition: opacity 0.2s ease, fill 0.3s ease;
+  pointer-events: none;
+}
+#board.live .cell.legal .move-dot { opacity: 0.4; }
+
+#board.live .cell.legal { cursor: pointer; }
+@media (hover: hover) {
+  #board.live .cell.legal:hover .cell-hit {
+    fill: color-mix(in srgb, var(--turn-soft) 80%, transparent);
+  }
+  #board.live .cell.legal:hover .move-dot { opacity: 0.75; }
+}
+
+.cell:focus-visible .cell-hit { stroke: var(--focus); stroke-width: 3; }
+
+/* The most recent move, so the next player can see what changed. */
+.cell.last .cell-hit { fill: color-mix(in srgb, var(--line) 45%, transparent); }
+
+/* ---------------------------------------------------------------- results */
+
+/* Finished round: the winner's discs stay bright, the loser's step back. */
+#board.won-x .disc-o,
+#board.won-o .disc-x { opacity: 0.35; }
+#board.over .cell.last .cell-hit { fill: transparent; }
+
+/* Quiet until the round is over, then it becomes the obvious next step. */
+.btn.primary.quiet:not(:disabled) {
+  background: var(--surface);
+  color: inherit;
+}
+.btn.primary.quiet:hover:not(:disabled) { background: var(--surface-2); }
+
+/* Confetti bursts from the middle of the board. */
+.board-area .confetti { top: 50%; }

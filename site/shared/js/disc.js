@@ -1,11 +1,11 @@
-// Discs, shared by the board and the home page preview: how they look and how
-// they fall. Red (X) discs carry a small cross and Blue (O) discs an inner
+// Discs for the disc games (Four in a Row, Reversi, Nine Men's Morris): how
+// they look and how they fall. Red (X) discs carry a small cross and Blue (O) discs an inner
 // ring, so the two can be told apart without relying on colour. Colours come
 // from CSS.
 
-import { ms } from '../../shared/js/motion.js';
-import { svgEl } from '../../shared/js/marks.js';
-import { X } from './game.js';
+import { ms } from './motion.js';
+import { svgEl } from './marks.js';
+import { X } from './tictactoe.js';
 
 const round2 = (n) => Math.round(n * 100) / 100;
 

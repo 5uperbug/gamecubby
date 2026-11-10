@@ -66,6 +66,32 @@ identical symbols in a row (six counts too); **Chaos** wins if the board fills
 first. Tap a square, then press **X** or **O**. Roles swap every round, and
 **New match** can mark squares where one more symbol would make five.
 
+### Hex
+
+Take turns placing stones on a rhombus of hexagons. Red wins by joining the
+top and bottom edges, Blue by joining left and right; the board can never
+fill up without a winner, so there are no draws. Choose 7×7, 9×9 or 11×11
+under **New game**. With the swap rule (on by default), the second player may
+press **Swap** instead of their first move to take over the opening stone,
+mirrored to face their edges. Red stones carry a cross and Blue stones a ring,
+games won are kept, and the starting player alternates.
+
+### Nine Men's Morris
+
+Each player places nine pieces, then moves them one step along the lines. Line
+up three to form a mill and remove an opposing piece (pieces in a mill are safe
+unless all of them are). With three pieces left you may fly to any empty point;
+you lose at two pieces or with no move. Tap a piece, then where it goes. Fifty
+moves without a mill make the round a draw. Scores carry across rounds.
+
+### Reversi
+
+An 8×8 board that starts with four discs in the centre. Each move must trap a
+line of your opponent's discs between the new disc and one of yours, and every
+trapped disc flips. Dots show the legal moves, and a player with no move passes
+automatically. When neither can move, the most discs wins. Red discs carry a
+cross and Blue discs a ring, and the mark changes as a disc flips.
+
 ### Shared by every game
 
 - Light and dark themes: the first visit follows the system setting, and the
@@ -96,10 +122,11 @@ site/                        ← deployed to GitHub Pages
       game.js                rules: pure functions, no DOM
       preview.js             animated board art for the home page card
       icon.svg               browser tab icon
-    tic-tac-toe/  dots-and-boxes/  notakto/  order-and-chaos/
+    tic-tac-toe/  dots-and-boxes/  notakto/  order-and-chaos/  four-in-a-row/
+    nine-mens-morris/
       index.html  style.css  app.js  game.js  preview.js  icon.svg
-    four-in-a-row/           same files, plus disc.js (disc drawing and the drop,
-                             shared by app.js and preview.js)
+    hex/                     same files, plus board.js (hex geometry and stones)
+    reversi/                 same files, plus discs.js (flip animation)
     gomoku/                  same files, plus board-view.js (zoom, like Mega's)
   shared/
     css/base.css             design tokens, light/dark themes, header,
@@ -114,6 +141,7 @@ site/                        ← deployed to GitHub Pages
     js/marks.js              SVG helpers: X/O marks, win lines, stroke drawing
     js/storage.js            namespaced localStorage
     js/tictactoe.js          3×3 basics shared by the X/O games (lines, players)
+    js/disc.js               disc drawing and the drop, for the disc games
   vendor/animejs/            anime.js 4.5.0 ESM bundle (MIT)
 tests/
   mega-tic-tac-toe.test.js   Mega rules

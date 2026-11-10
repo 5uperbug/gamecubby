@@ -8,7 +8,7 @@ import { svgEl, lineThrough, drawStrokes } from '../../shared/js/marks.js';
 import {
   X, COLS, ROWS, cellAt, colOf, rowOf, createRound, landingRow, play,
 } from './game.js';
-import { createDisc, fallKeyframes } from './disc.js';
+import { createDisc, fallKeyframes } from '../../shared/js/disc.js';
 
 const C = 40; // cell
 const R = 15.5; // disc radius

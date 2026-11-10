@@ -1,0 +1,115 @@
+/* Nine Men's Morris board. Layout, header, buttons and dialogs come from
+   shared/css/base.css and shared/css/game-shell.css. */
+
+/* ---------------------------------------------------------------- players */
+
+.player {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "mark name score" "mark hand score";
+  column-gap: 8px;
+  row-gap: 1px;
+}
+.player-mark { grid-area: mark; }
+.player-name { grid-area: name; }
+.player-score { grid-area: score; }
+
+/* Pieces still to place, then pieces left on the board. */
+.player-hand {
+  grid-area: hand;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-mark .disc-body { stroke: none; }
+
+/* ------------------------------------------------------------------ board */
+
+.lines path {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.dot { fill: var(--line-strong); transform-box: fill-box; transform-origin: center; transition: r 0.15s ease; }
+.pt-hit { fill: transparent; }
+.pt.filled .dot { opacity: 0; }
+
+/* Pieces: Red carries a cross and Blue a ring, so colour is never the only cue. */
+.disc { transform-box: fill-box; transform-origin: center; transition: opacity 0.25s ease; }
+.disc-x .disc-body { fill: var(--x); }
+.disc-o .disc-body { fill: var(--o); }
+.disc-cue {
+  fill: none;
+  stroke: var(--board);
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+/* The ring around a point that marks what can happen there. */
+.pt-mark {
+  fill: none;
+  stroke: var(--turn);
+  stroke-width: 4;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+#board.live .pt.open,
+#board.live .pt.movable,
+#board.live .pt.target,
+#board.live .pt.takeable { cursor: pointer; }
+
+#board.live .pt.open:hover .dot,
+#board.live .pt.target:hover .dot { r: 14; }
+
+#board.live .pt.selected .pt-mark { opacity: 1; stroke-width: 6; }
+#board.live .pt.target .pt-mark { opacity: 0.9; stroke-dasharray: 9 8; }
+#board.live .pt.target .dot { fill: var(--turn); }
+
+/* Pending removal: the pieces that can go are ringed, everything else steps back. */
+#board.live .pt.takeable .pt-mark {
+  opacity: 1;
+  stroke-dasharray: 9 8;
+  animation: takeable 1.1s ease-in-out infinite alternate;
+}
+#board.live.removing .pt:not(.takeable) .disc { opacity: 0.5; }
+
+@keyframes takeable { to { stroke-width: 7; } }
+
+@media (prefers-reduced-motion: reduce) {
+  #board.live .pt.takeable .pt-mark { animation: none; }
+}
+
+.pt-ring {
+  fill: none;
+  stroke: var(--focus);
+  stroke-width: 4;
+  opacity: 0;
+}
+.pt:focus-visible .pt-ring { opacity: 1; }
+
+/* A freshly closed mill. */
+.mill-line { fill: none; stroke-width: 10; stroke-linecap: round; opacity: 0.55; }
+
+/* ---------------------------------------------------------------- results */
+
+#board.won-x .disc-o,
+#board.won-o .disc-x { opacity: 0.3; }
+#board.drawn .disc { opacity: 0.5; }
+
+/* Quiet until the round is over, then it becomes the obvious next step. */
+.btn.primary.quiet:not(:disabled) {
+  background: var(--surface);
+  color: inherit;
+}
+.btn.primary.quiet:hover:not(:disabled) { background: var(--surface-2); }
+
+.board-area .confetti { top: 50%; }
