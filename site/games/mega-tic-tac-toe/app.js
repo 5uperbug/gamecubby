@@ -12,7 +12,7 @@ import { createStore } from '../../shared/js/storage.js';
 import {
   OPPONENTS, isBot, pickMove, think,
 } from '../../shared/js/bot.js';
-import { addOpponentChoice, labelPlayers } from '../../shared/js/opponent.js';
+import { labelPlayers, setupWizard } from '../../shared/js/opponent.js';
 import bot from './bot.js';
 import { initThemeToggle } from '../../shared/js/theme.js';
 
@@ -376,21 +376,29 @@ async function hideResult(animated = true) {
 
 const newDialog = $('#dlg-new');
 const newForm = newDialog.querySelector('form');
-addOpponentChoice(newForm, 'X');
+setupWizard(newForm, 'X');
 
-$('#btn-new').addEventListener('click', () => {
+function fillNewForm() {
   newForm.variant.value = state.rules.openBoards ? 'open' : 'classic';
   newForm.autozoom.checked = prefs.autoZoom;
   newForm.elements.opponent.value = opponent;
+}
+
+function startFromForm() {
+  prefs = { ...prefs, autoZoom: newForm.autozoom.checked };
+  store.set('prefs', prefs);
+  newGame({ openBoards: newForm.variant.value === 'open' }, newForm.elements.opponent.value);
+}
+
+
+$('#btn-new').addEventListener('click', () => {
+  fillNewForm();
   newDialog.returnValue = '';
   openDialog(newDialog);
 });
 
 newDialog.addEventListener('close', () => {
-  if (newDialog.returnValue !== 'start') return;
-  prefs = { ...prefs, autoZoom: newForm.autozoom.checked };
-  store.set('prefs', prefs);
-  newGame({ openBoards: newForm.variant.value === 'open' }, newForm.elements.opponent.value);
+  if (newDialog.returnValue === 'start') booted.then(startFromForm);
 });
 
 $('#btn-rules').addEventListener('click', () => openDialog($('#dlg-rules')));
@@ -430,6 +438,8 @@ async function boot() {
   ui.busy = true;
   refresh();
   reveal(document.querySelectorAll('[data-reveal]'));
+  // Nothing played yet in this match: start with the setup wizard, over the intro.
+  if (!state.history.length) $('#btn-new').click();
   await view.intro();
   await view.highlight(playableBoards(state), state.turn);
   ui.busy = false;
@@ -438,4 +448,4 @@ async function boot() {
   botTurn();
 }
 
-boot();
+const booted = boot();

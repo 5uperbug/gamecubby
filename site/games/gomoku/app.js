@@ -18,7 +18,7 @@ import { createStore } from '../../shared/js/storage.js';
 import {
   OPPONENTS, isBot, pickMove, think,
 } from '../../shared/js/bot.js';
-import { addOpponentChoice, labelPlayers } from '../../shared/js/opponent.js';
+import { labelPlayers, setupWizard } from '../../shared/js/opponent.js';
 import bot from './bot.js';
 import { initThemeToggle } from '../../shared/js/theme.js';
 
@@ -395,17 +395,30 @@ async function hideResult(animated = true) {
 
 const newDialog = $('#dlg-new');
 const newForm = newDialog.querySelector('form');
-addOpponentChoice(newForm, 'X');
+setupWizard(newForm, 'X');
 
 function showStarter() {
   $('#starter-note').innerHTML = `${tag(nextStarter(newForm.resetScores.checked))} moves first.`;
 }
 
-$('#btn-new').addEventListener('click', () => {
+function fillNewForm() {
   newForm.rule.value = game.rules.exactFive ? 'exact' : 'freestyle';
   newForm.resetScores.checked = false;
   newForm.elements.opponent.value = opponent;
   showStarter();
+}
+
+function startFromForm() {
+  newGame({
+    exactFive: newForm.rule.value === 'exact',
+    resetScores: newForm.resetScores.checked,
+    against: newForm.elements.opponent.value,
+  });
+}
+
+
+$('#btn-new').addEventListener('click', () => {
+  fillNewForm();
   newDialog.returnValue = '';
   openDialog(newDialog);
 });
@@ -413,12 +426,7 @@ $('#btn-new').addEventListener('click', () => {
 newForm.resetScores.addEventListener('change', showStarter);
 
 newDialog.addEventListener('close', () => {
-  if (newDialog.returnValue !== 'start') return;
-  newGame({
-    exactFive: newForm.rule.value === 'exact',
-    resetScores: newForm.resetScores.checked,
-    against: newForm.elements.opponent.value,
-  });
+  if (newDialog.returnValue === 'start') booted.then(startFromForm);
 });
 
 $('#btn-rules').addEventListener('click', () => openDialog($('#dlg-rules')));
@@ -463,6 +471,8 @@ async function boot() {
   ui.busy = true;
   syncMode();
   reveal(document.querySelectorAll('[data-reveal]'));
+  // Nothing played yet in this match: start with the setup wizard, over the intro.
+  if (!game.moves.length && !Object.values(scores).some(Boolean)) $('#btn-new').click();
   await view.intro();
   ui.busy = false;
   refresh();
@@ -470,4 +480,4 @@ async function boot() {
   botTurn();
 }
 
-boot();
+const booted = boot();

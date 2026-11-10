@@ -1,10 +1,11 @@
 # Game Cubby
 
-Pen-and-paper games for two players sharing one screen. A static site of plain
+Pen-and-paper games for two players sharing one screen, or one player against
+a bot. A static site of plain
 HTML, CSS and ES modules that runs unbuilt in development; the deploy is
 bundled and minified with esbuild and published to GitHub Pages.
 
-**Play:** <https://5uperbug.github.io/gamecubby/>
+**Play:** <https://gamecubby.5uperbug.com/>
 
 ## Games
 
@@ -95,6 +96,13 @@ cross and Blue discs a ring, and the mark changes as a disc flips.
 
 ### Shared by every game
 
+- A bot opponent: **New game** / **New match** opens a short wizard. Step 1
+  picks **A friend**, **Bot · easy** or **Bot · hard**; step 2 (in games that
+  have options) picks the board size or rules; then start. The bot plays O
+  (Blue, or Player 2), so with alternating starters it opens every other
+  round; in Order and Chaos it swaps roles with you each round. Undo takes
+  back the bot's reply as well as your move, and switching opponent resets
+  the score. See [Bot](#bot) for how it plays and where Hard is weak.
 - Light and dark themes: the first visit follows the system setting, and the
   toggle saves your choice for the whole site.
 - Responsive layout: stacked on phones, board plus side panel in landscape
@@ -103,6 +111,29 @@ cross and Blue discs a ring, and the mark changes as a disc flips.
   in the OS, they are skipped.
 - Undo (also Ctrl/Cmd+Z), keyboard play (arrow keys and Enter), and the game in
   progress survives a reload.
+
+## Bot
+
+One search in `shared/js/bot.js` serves every game: it looks a fixed number
+of moves ahead (minimax with alpha-beta pruning). It maximises on its own turns
+rather than alternating blindly, because in some games the same side moves
+twice: a completed box, a forced pass, a mill's removal. Each game's `bot.js`
+tells it the legal moves and how good a position looks. Easy looks one move
+ahead and plays a random move about 30% of the time; Hard looks 2 to 6 moves
+ahead, depending on the game, and to the end of the game once few moves are
+left (always, in Tic-Tac-Toe). Games on big boards (Gomoku, Hex) only
+search the dozen moves that look best.
+
+Known limits of Hard (each marked with a `ponytail:` comment in its file):
+
+- **Dots and Boxes:** no long-chain or double-dealing strategy, so a strong
+  player can win the endgame.
+- **Hex:** scores by shortest path only, so it misses bridge and ladder
+  tactics.
+- **Notakto:** no misère-quotient theory, so its early moves on three boards
+  are guesses; it is exact once the boards fill up.
+- **Gomoku:** under **Exactly five**, its scoring ignores lines of six (the
+  rules still decide the winner).
 
 ## Repository structure
 
@@ -121,11 +152,12 @@ site/                        ← the website (source of dist/)
       app.js                 turn flow, UI state, persistence
       board-view.js          SVG board, viewBox zoom, board animations
       game.js                rules: pure functions, no DOM
+      bot.js                 bot adapter: legal moves and a position score
       preview.js             animated board art for the home page card
       icon.svg               browser tab icon
     tic-tac-toe/  dots-and-boxes/  notakto/  order-and-chaos/  four-in-a-row/
     nine-mens-morris/
-      index.html  style.css  app.js  game.js  preview.js  icon.svg
+      index.html  style.css  app.js  game.js  bot.js  preview.js  icon.svg
     hex/                     same files, plus board.js (hex geometry and stones)
     reversi/                 same files, plus discs.js (flip animation)
     gomoku/                  same files, plus board-view.js (zoom, like Mega's)
@@ -143,11 +175,16 @@ site/                        ← the website (source of dist/)
     js/storage.js            namespaced localStorage
     js/tictactoe.js          3×3 basics shared by the X/O games (lines, players)
     js/disc.js               disc drawing and the drop, for the disc games
+    js/bot.js                the bot's search, shared by every game (no DOM)
+    js/opponent.js           turns a New game dialog into the wizard
+                             (Opponent, then options), and the You/Bot names
   vendor/animejs/            anime.js 4.5.0 ESM bundle (MIT)
 tests/
   mega-tic-tac-toe.test.js   Mega rules
   tic-tac-toe.test.js        classic rules and the shared 3×3 core
   <slug>.test.js             rules for each of the other games
+  bot.test.js                every bot plays legal moves, takes wins, blocks
+                             losses, and thinks fast enough
   site.test.js               every link and import resolves; every game has
                              a home page card and preview, and links back
 scripts/build.js             builds dist/ from site/ (esbuild)
@@ -179,13 +216,18 @@ scripts/build.js             builds dist/ from site/ (esbuild)
    (`href="../../"`) in the header.
 3. Put the rules in `game.js` as pure functions and add
    `tests/<slug>.test.js`.
-4. Add `preview.js` exporting `buildPreview(svg)`, which draws the card art
+4. For a bot opponent, add `bot.js` exporting `{ moves, play, turn, outcome,
+   score, depth }` (described at the top of `shared/js/bot.js`), and wire it
+   into `app.js` the way `games/tic-tac-toe/app.js` does: `botTurn()` after
+   every move and new round, `undoSteps()` for undo, and
+   `setupWizard()` on the dialog's form. Add the game to `tests/bot.test.js`.
+5. Add `preview.js` exporting `buildPreview(svg)`, which draws the card art
    and returns `{ hide, intro, enter, leave }`. The contract is described at
    the top of `home.js`.
-5. Add a card to `site/index.html` with `data-game="<slug>"` and
+6. Add a card to `site/index.html` with `data-game="<slug>"` and
    `data-accent="x"` or `"o"`. `home.js` loads the preview from the game's
    folder.
-6. Run `npm test`. The site test fails if the game has no card on the home
+7. Run `npm test`. The site test fails if the game has no card on the home
    page, no preview or no link back, or references a file that does not
    exist.
 

@@ -19,7 +19,7 @@ import { createStore } from '../../shared/js/storage.js';
 import {
   OPPONENTS, isBot, pickMove, think,
 } from '../../shared/js/bot.js';
-import { addOpponentChoice, labelPlayers } from '../../shared/js/opponent.js';
+import { labelPlayers, setupWizard } from '../../shared/js/opponent.js';
 import bot from './bot.js';
 import { initThemeToggle } from '../../shared/js/theme.js';
 
@@ -674,15 +674,19 @@ $('#btn-rules').addEventListener('click', () => openDialog($('#dlg-rules')));
 
 const matchDialog = $('#dlg-match');
 const matchForm = matchDialog.querySelector('form');
-addOpponentChoice(matchForm, 'Player 1');
-$('#btn-match').addEventListener('click', () => {
+setupWizard(matchForm, 'Player 1');
+function fillMatchForm() {
   matchForm.boards.value = String(match.boardCount);
   matchForm.elements.opponent.value = match.opponent;
+}
+const startFromForm = () => newMatch(Number(matchForm.boards.value), matchForm.elements.opponent.value);
+$('#btn-match').addEventListener('click', () => {
+  fillMatchForm();
   matchDialog.returnValue = '';
   openDialog(matchDialog);
 });
 matchDialog.addEventListener('close', () => {
-  if (matchDialog.returnValue === 'start') newMatch(Number(matchForm.boards.value), matchForm.elements.opponent.value);
+  if (matchDialog.returnValue === 'start') booted.then(startFromForm);
 });
 
 document.addEventListener('keydown', (e) => {
@@ -703,10 +707,12 @@ async function boot() {
   ui.busy = true;
   refresh();
   reveal(document.querySelectorAll('[data-reveal]'));
+  // Nothing played yet in this match: start with the setup wizard, over the intro.
+  if (!round.moves.length && match.roundNo === 1 && !Object.values(match.scores).some(Boolean)) $('#btn-match').click();
   await intro();
   ui.busy = false;
   refresh();
   botTurn();
 }
 
-boot();
+const booted = boot();

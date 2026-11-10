@@ -18,7 +18,7 @@ import { createStore } from '../../shared/js/storage.js';
 import {
   OPPONENTS, isBot, pickMove, think,
 } from '../../shared/js/bot.js';
-import { addOpponentChoice, labelPlayers } from '../../shared/js/opponent.js';
+import { labelPlayers, setupWizard } from '../../shared/js/opponent.js';
 import bot from './bot.js';
 import { initThemeToggle } from '../../shared/js/theme.js';
 
@@ -520,25 +520,33 @@ $('#btn-review').addEventListener('click', async (e) => {
 
 const newDialog = $('#dlg-new');
 const newForm = newDialog.querySelector('form');
-addOpponentChoice(newForm, 'Red');
+setupWizard(newForm, 'Red');
 
-$('#btn-new').addEventListener('click', () => {
+function fillNewForm() {
   newForm.elements.boardsize.value = String(game.size);
   newForm.elements.resetwins.checked = false;
   newForm.elements.swaprule.checked = game.swapRule;
   newForm.elements.opponent.value = opponent;
-  newDialog.returnValue = '';
-  openDialog(newDialog);
-});
+}
 
-newDialog.addEventListener('close', () => {
-  if (newDialog.returnValue !== 'start') return;
+function startFromForm() {
   const size = Number(newForm.elements.boardsize.value) || DEFAULT_SIZE;
   newGame(size, {
     resetWins: newForm.elements.resetwins.checked,
     swapRule: newForm.elements.swaprule.checked,
     against: newForm.elements.opponent.value,
   });
+}
+
+
+$('#btn-new').addEventListener('click', () => {
+  fillNewForm();
+  newDialog.returnValue = '';
+  openDialog(newDialog);
+});
+
+newDialog.addEventListener('close', () => {
+  if (newDialog.returnValue === 'start') booted.then(startFromForm);
 });
 
 $('#btn-rules').addEventListener('click', () => openDialog($('#dlg-rules')));
@@ -562,6 +570,8 @@ async function boot() {
   ui.busy = true;
   refresh();
   reveal(document.querySelectorAll('[data-reveal]'));
+  // Nothing played yet in this match: start with the setup wizard, over the intro.
+  if (!game.moves.length && !Object.values(wins).some(Boolean)) $('#btn-new').click();
   await intro();
   ui.busy = false;
   refresh();
@@ -569,4 +579,4 @@ async function boot() {
   botTurn();
 }
 
-boot();
+const booted = boot();

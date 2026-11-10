@@ -280,6 +280,9 @@ button { font: inherit; color: inherit; }
 .toggle input:focus-visible + .toggle-track { outline: 3px solid var(--focus); outline-offset: 2px; }
 
 .sheet-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.sheet-actions .btn[hidden] { display: none; }
+.wizard-step[hidden] { display: none; }
+.wizard-label { margin: 0 0 4px; font-weight: 700; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 .sheet-actions .btn { box-shadow: none; background: var(--surface-2); }
 .sheet-actions .btn.primary { background: var(--turn); }
 
