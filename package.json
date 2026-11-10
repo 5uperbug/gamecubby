@@ -2,11 +2,17 @@
   "name": "gamecubby",
   "version": "1.0.0",
   "private": true,
-  "description": "Pen-and-paper games for two players sharing one screen. Static site, no build step.",
+  "description": "Pen-and-paper games for two players sharing one screen. Static site; runs unbuilt in development, bundled and minified for deploy.",
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "start": "python3 -m http.server 8000 --directory site"
+    "build": "node scripts/build.js",
+    "start": "http-server site -p 8000 -c-1",
+    "preview": "npm run build && http-server dist -p 8000 -c-1"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "animejs": "4.5.0",
+    "esbuild": "0.28.2"
+  }
 }

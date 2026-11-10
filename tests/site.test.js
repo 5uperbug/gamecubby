@@ -12,7 +12,9 @@ import {
 } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const SITE = resolve(dirname(fileURLToPath(import.meta.url)), '../site');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+// SITE_DIR=dist checks the built output (CI runs the page-level tests on it).
+const SITE = resolve(ROOT, process.env.SITE_DIR ?? 'site');
 const rel = (p) => relative(SITE, p) || '.';
 
 function walk(dir) {
@@ -102,4 +104,10 @@ test('every page loads the theme script before its stylesheets', () => {
     assert.ok(boot !== -1, `${rel(file)} does not load theme-boot.js`);
     assert.ok(boot < css, `${rel(file)} loads theme-boot.js after its CSS`);
   }
+});
+
+test('the vendored anime.js matches the npm version bundled for deploy', () => {
+  const vendored = readFileSync(join(ROOT, 'site/vendor/animejs/anime.esm.min.js'), 'utf8').match(/@version v(\S+)/)[1];
+  const { devDependencies } = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+  assert.equal(devDependencies.animejs, vendored, 'bump site/vendor/animejs and devDependencies.animejs together');
 });

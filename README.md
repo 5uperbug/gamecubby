@@ -1,7 +1,8 @@
 # Game Cubby
 
-Pen-and-paper games for two players sharing one screen. A static site with no
-build step: plain HTML, CSS and ES modules, deployed to GitHub Pages.
+Pen-and-paper games for two players sharing one screen. A static site of plain
+HTML, CSS and ES modules that runs unbuilt in development; the deploy is
+bundled and minified with esbuild and published to GitHub Pages.
 
 **Play:** <https://5uperbug.github.io/gamecubby/>
 
@@ -105,11 +106,11 @@ cross and Blue discs a ring, and the mark changes as a disc flips.
 
 ## Repository structure
 
-Everything under `site/` is the website and is published as-is. Everything
-else is tooling.
+Everything under `site/` is the website. `npm run build` bundles it into
+`dist/`, which is what gets published. Everything else is tooling.
 
 ```
-site/                        ← deployed to GitHub Pages
+site/                        ← the website (source of dist/)
   index.html                 home page: the game picker
   home.css  home.js          home page styles; loads each card's preview
   favicon.svg
@@ -149,7 +150,8 @@ tests/
   <slug>.test.js             rules for each of the other games
   site.test.js               every link and import resolves; every game has
                              a home page card and preview, and links back
-.github/workflows/pages.yml  runs the tests, then deploys site/
+scripts/build.js             builds dist/ from site/ (esbuild)
+.github/workflows/pages.yml  runs the tests, builds, then deploys dist/
 ```
 
 ### Conventions
@@ -157,9 +159,11 @@ tests/
 - **Rules stay pure.** Each game's `game.js` imports nothing that touches the
   DOM, so `node --test` can exercise it directly.
 - **Imports are relative.** Game pages reach shared code with `../../shared/…`.
-  No bare package names, because there is no bundler.
-- **anime.js comes from `shared/js/motion.js`.** Upgrading anime.js means
-  changing one import path.
+  No bare package names: `site/` must run without a build.
+- **anime.js comes from `shared/js/motion.js`.** Development uses the
+  vendored bundle; the build swaps in the npm `animejs` package so it
+  tree-shakes. Upgrading means replacing `site/vendor/animejs/` and bumping
+  `devDependencies.animejs` to the same version (a test checks they match).
 - **Saved data is namespaced.** All of `5uperbug.github.io` is one origin, so
   keys look like `gamecubby:<slug>:<key>` (via `createStore('<slug>')`). The
   theme is stored under `gamecubby:theme`.
@@ -194,7 +198,7 @@ npm start
 ```
 
 Then open <http://localhost:8000>. (`npm start` runs
-`python3 -m http.server 8000 --directory site`.)
+`http-server site -p 8000 -c-1`.)
 
 ## Tests
 
@@ -202,9 +206,23 @@ Then open <http://localhost:8000>. (`npm start` runs
 npm test
 ```
 
+## Build
+
+```bash
+npm ci
+npm run build     # site/ → dist/
+npm run preview   # build, then serve dist/ on http://localhost:8000
+```
+
+`scripts/build.js` copies `site/` to `dist/`, then uses esbuild to bundle each
+page's modules (`home.js` and every `games/*/app.js`) with shared code split
+into `dist/chunks/`, tree-shake anime.js, and minify the JS and CSS. Entry
+files keep their paths, so the HTML is published unchanged.
+
 ## Deploy
 
-`.github/workflows/pages.yml` runs the tests on every push and pull request.
-On the default branch it then uploads `site/` to GitHub Pages. The
+`.github/workflows/pages.yml` runs the tests and the build on every push and
+pull request, then re-checks the built pages' links. On the default branch it
+publishes `dist/` to GitHub Pages. The
 repository's Pages source must be set to **GitHub Actions**
 (**Settings → Pages → Build and deployment**).

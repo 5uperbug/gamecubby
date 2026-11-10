@@ -20,7 +20,18 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+          cache: npm
+      - run: npm ci
       - run: npm test
+      - run: npm run build
+      # Re-run the page-level checks on the built site.
+      - run: node --test --test-name-pattern="href and src|linked from|theme script" tests/site.test.js
+        env:
+          SITE_DIR: dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
 
   deploy:
     # Only the repository's default branch is published.
@@ -37,11 +48,14 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v5
       - uses: actions/configure-pages@v5
-      # Everything under site/ is the website, published as-is.
+      # The test job built and checked dist/; publish exactly that.
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: site
+          path: dist
       - id: deployment
         uses: actions/deploy-pages@v4
