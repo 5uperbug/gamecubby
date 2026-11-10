@@ -7,12 +7,19 @@ import {
   rowOf, colOf,
 } from './game.js';
 import { BoardView } from './board-view.js';
-import { animate, ms, clearInline } from '../../shared/js/motion.js';
+import {
+  animate, ms, clearInline, wait,
+} from '../../shared/js/motion.js';
 import { createMark, svgEl } from '../../shared/js/marks.js';
 import {
   confetti, openDialog, pop, reveal, shake,
 } from '../../shared/js/effects.js';
 import { createStore } from '../../shared/js/storage.js';
+import {
+  OPPONENTS, isBot, pickMove, think,
+} from '../../shared/js/bot.js';
+import { addOpponentChoice, labelPlayers } from '../../shared/js/opponent.js';
+import bot from './bot.js';
 import { initThemeToggle } from '../../shared/js/theme.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -26,20 +33,37 @@ const MIN_TAP = 34;
 function load() {
   const saved = store.get('match');
   const scores = { X: 0, O: 0 };
-  if (!saved || typeof saved !== 'object') return { scores, game: createGame() };
+  if (!saved || typeof saved !== 'object') return { scores, game: createGame(), opponent: 'human' };
   for (const p of [X, O]) {
     const n = saved.scores?.[p];
     if (Number.isInteger(n) && n >= 0) scores[p] = n;
   }
   const moves = Array.isArray(saved.moves) ? saved.moves : [];
-  return { scores, game: replay(saved.rules, saved.starter, moves) };
+  const opponent = OPPONENTS.includes(saved.opponent) ? saved.opponent : 'human';
+  return { scores, game: replay(saved.rules, saved.starter, moves), opponent };
 }
 
-let { scores, game } = load();
+const BOT = O; // the bot always plays O
+
+let { scores, game, opponent } = load();
+
+const vsBot = () => isBot(opponent);
+const botsTurn = () => vsBot() && !game.winner && game.turn === BOT;
+
+/** Moves to take back so it is a person's turn again (0 if there are none). */
+function undoSteps() {
+  if (!vsBot()) return game.moves.length ? 1 : 0;
+  let g = game;
+  for (let n = 1; n <= game.moves.length; n += 1) {
+    g = undoGame(g);
+    if (g.turn !== BOT) return n;
+  }
+  return 0;
+}
 
 function save() {
   store.set('match', {
-    scores, rules: game.rules, starter: game.starter, moves: game.moves,
+    scores, rules: game.rules, starter: game.starter, moves: game.moves, opponent,
   });
 }
 
@@ -68,6 +92,7 @@ function hintFor() {
   if (game.winner) return `${tag(game.winner)} wins with ${inARow(longestLine())}!`;
   if (ui.committing) return `${tag(ui.committing.player)} played ${where(ui.committing.cell)}.`;
   const p = tag(game.turn);
+  if (botsTurn()) return `${tag(BOT)} (bot) is thinking…`;
   if (ui.pending !== null) return `${p}: confirm your move, or tap another cell.`;
   if (view.zoomed) return `${p}: tap a cell to place your mark.`;
   const lead = game.moves.length ? `${p} to move.` : `${p} goes first.`;
@@ -85,6 +110,7 @@ function refresh({ holdScores = false } = {}) {
   document.body.classList.toggle('turn-x', accent === X);
   document.body.classList.toggle('game-over', over);
 
+  labelPlayers(vsBot() && BOT);
   for (const pill of document.querySelectorAll('.player')) {
     const on = pill.dataset.player === active;
     pill.classList.toggle('active', on);
@@ -113,7 +139,7 @@ function refresh({ holdScores = false } = {}) {
     ? 'Exactly five: six or more in a row doesn’t count'
     : 'Freestyle: five or more in a row wins';
 
-  $('#btn-undo').disabled = ui.busy || !game.moves.length;
+  $('#btn-undo').disabled = ui.busy || !undoSteps();
   const back = $('#btn-back');
   back.disabled = ui.busy || (ui.pending === null && !view.zoomed);
   back.classList.toggle('cancel', !ui.small);
@@ -122,7 +148,7 @@ function refresh({ holdScores = false } = {}) {
   primary.disabled = ui.busy || (!over && ui.pending === null);
   primary.classList.toggle('again', over);
   $('#confirm-label').textContent = over ? 'Play again' : 'Confirm';
-  view.setInput(tapMode(over), ui.busy);
+  view.setInput(tapMode(over), ui.busy || botsTurn());
 }
 
 /** Disabling a focused button drops focus to the page, so actions note which control had it. */
@@ -143,7 +169,7 @@ function restoreFocus() {
 
 /** What the next tap on the board does. */
 function tapMode(over) {
-  if (ui.busy || over) return '';
+  if (ui.busy || over || botsTurn()) return '';
   return view.zoomed || !ui.small ? 'place' : 'zoom';
 }
 
@@ -167,7 +193,7 @@ function syncMode() {
 
 async function onCell(cell, how) {
   const keyboard = how === 'keyboard';
-  if (ui.busy) return;
+  if (ui.busy || botsTurn()) return;
   if (game.winner) {
     // The game is over: point at the way forward.
     shake($('#hint'));
@@ -228,6 +254,25 @@ async function confirmMove() {
   if (game.winner) showResult();
   syncMode();
   restoreFocus();
+  botTurn();
+}
+
+/** Places and confirms the bot's move. */
+async function botTurn() {
+  if (ui.busy || !botsTurn()) return;
+  ui.busy = true;
+  refresh();
+  await think();
+  if (botsTurn()) {
+    const cell = pickMove(game, bot, BOT, opponent);
+    ui.pending = cell;
+    view.showPending(cell, game.turn);
+    view.keepVisible(cell);
+    await wait(250);
+  }
+  ui.busy = false;
+  if (ui.pending !== null) confirmMove();
+  else refresh();
 }
 
 async function cancelMove() {
@@ -247,7 +292,8 @@ async function cancelMove() {
 }
 
 async function undoMove() {
-  if (ui.busy || !game.moves.length) return;
+  const steps = undoSteps();
+  if (ui.busy || !steps) return;
   holdFocus();
   ui.busy = true;
   hideResult(false);
@@ -256,8 +302,11 @@ async function undoMove() {
   refresh();
   await view.zoomOut();
   const result = game.winner;
-  await view.takeBack(game.moves.at(-1));
-  game = undoGame(game);
+  for (let i = 0; i < steps; i += 1) {
+    await view.takeBack(game.moves.at(-1));
+    game = undoGame(game);
+    view.sync(game);
+  }
   if (result === X || result === O) scores[result] = Math.max(0, scores[result] - 1);
   save();
   view.sync(game);
@@ -273,12 +322,14 @@ function nextStarter(resetScores) {
   return game.moves.length ? other(game.starter) : game.starter;
 }
 
-async function newGame({ exactFive = game.rules.exactFive, resetScores = false } = {}) {
+async function newGame({ exactFive = game.rules.exactFive, resetScores = false, against = opponent } = {}) {
   if (ui.busy) {
     // Chosen in the dialog while an animation was finishing: start right after it.
-    setTimeout(() => newGame({ exactFive, resetScores }), 120);
+    setTimeout(() => newGame({ exactFive, resetScores, against }), 120);
     return;
   }
+  // A new opponent starts a new score.
+  if (against !== opponent) resetScores = true;
   holdFocus();
   ui.busy = true;
   hideResult(false);
@@ -290,6 +341,7 @@ async function newGame({ exactFive = game.rules.exactFive, resetScores = false }
   const starter = nextStarter(resetScores);
   if (resetScores) scores = { X: 0, O: 0 };
   game = createGame({ exactFive }, starter);
+  opponent = against;
   save();
   view.sync(game);
   view.setCursor(CENTER);
@@ -299,6 +351,7 @@ async function newGame({ exactFive = game.rules.exactFive, resetScores = false }
   refresh();
   syncMode();
   restoreFocus();
+  botTurn();
 }
 
 // ------------------------------------------------------------------ result
@@ -342,6 +395,7 @@ async function hideResult(animated = true) {
 
 const newDialog = $('#dlg-new');
 const newForm = newDialog.querySelector('form');
+addOpponentChoice(newForm, 'X');
 
 function showStarter() {
   $('#starter-note').innerHTML = `${tag(nextStarter(newForm.resetScores.checked))} moves first.`;
@@ -350,6 +404,7 @@ function showStarter() {
 $('#btn-new').addEventListener('click', () => {
   newForm.rule.value = game.rules.exactFive ? 'exact' : 'freestyle';
   newForm.resetScores.checked = false;
+  newForm.elements.opponent.value = opponent;
   showStarter();
   newDialog.returnValue = '';
   openDialog(newDialog);
@@ -359,7 +414,11 @@ newForm.resetScores.addEventListener('change', showStarter);
 
 newDialog.addEventListener('close', () => {
   if (newDialog.returnValue !== 'start') return;
-  newGame({ exactFive: newForm.rule.value === 'exact', resetScores: newForm.resetScores.checked });
+  newGame({
+    exactFive: newForm.rule.value === 'exact',
+    resetScores: newForm.resetScores.checked,
+    against: newForm.elements.opponent.value,
+  });
 });
 
 $('#btn-rules').addEventListener('click', () => openDialog($('#dlg-rules')));
@@ -408,6 +467,7 @@ async function boot() {
   ui.busy = false;
   refresh();
   if (game.winner) showResult();
+  botTurn();
 }
 
 boot();

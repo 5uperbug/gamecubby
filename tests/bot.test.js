@@ -14,6 +14,10 @@ import * as dab from '../site/games/dots-and-boxes/game.js';
 import dabBot from '../site/games/dots-and-boxes/bot.js';
 import * as mega from '../site/games/mega-tic-tac-toe/game.js';
 import megaBot from '../site/games/mega-tic-tac-toe/bot.js';
+import * as gomoku from '../site/games/gomoku/game.js';
+import gomokuBot from '../site/games/gomoku/bot.js';
+import * as oc from '../site/games/order-and-chaos/game.js';
+import ocBot from '../site/games/order-and-chaos/bot.js';
 
 /** Plays random legal moves from `state` until `stop(state)` or the game ends. */
 function randomPlay(state, adapter, plies, rng = Math.random) {
@@ -143,3 +147,40 @@ test('mega-tic-tac-toe: hard wins a small board when it can', () => {
 
 timed('dots-and-boxes', () => dab.createGame(5), dabBot);
 timed('mega-tic-tac-toe', () => mega.createGame(), megaBot);
+
+legalFrom('gomoku', () => gomoku.createGame(), gomokuBot, gomoku.isLegal, [0, 6, 20]);
+legalFrom('order-and-chaos', () => oc.createRound(), ocBot, (r, m) => oc.isLegal(r, m.cell, m.symbol), [0, 8, 20, 30]);
+
+test('gomoku: hard takes five and blocks an open three', () => {
+  const at = gomoku.cellAt;
+  // X on row 7, cols 3-6; O scattered. X to move completes five at col 2 or 7.
+  let g = gomoku.replay({}, gomoku.X, [at(7, 3), at(0, 0), at(7, 4), at(0, 14), at(7, 5), at(14, 0), at(7, 6), at(14, 14)]);
+  assert.ok([at(7, 2), at(7, 7)].includes(pickMove(g, gomokuBot, gomoku.X, 'hard')));
+  // An open three (X at cols 3-5) with O to move: O blocks at or next to an end.
+  g = gomoku.replay({}, gomoku.X, [at(7, 3), at(0, 0), at(7, 4), at(0, 14), at(7, 5)]);
+  assert.equal(g.turn, gomoku.O);
+  assert.ok([at(7, 1), at(7, 2), at(7, 6), at(7, 7)].includes(pickMove(g, gomokuBot, gomoku.O, 'hard')));
+});
+
+test('order-and-chaos: Chaos spoils four in a row', () => {
+  // Order has X in row 0, cols 0-3; Chaos to move must put an O at col 4
+  // (col 5 alone can't stop cols 0-4).
+  const r = oc.replayRound([
+    { cell: 0, symbol: 'X' }, { cell: 35, symbol: 'O' }, { cell: 1, symbol: 'X' }, { cell: 30, symbol: 'O' },
+    { cell: 2, symbol: 'X' }, { cell: 24, symbol: 'X' }, { cell: 3, symbol: 'X' },
+  ]);
+  assert.equal(r.turn, oc.CHAOS);
+  assert.deepEqual(pickMove(r, ocBot, oc.CHAOS, 'hard'), { cell: 4, symbol: 'O' });
+});
+
+test('order-and-chaos: Order completes five', () => {
+  const r = oc.replayRound([
+    { cell: 0, symbol: 'X' }, { cell: 35, symbol: 'O' }, { cell: 1, symbol: 'X' }, { cell: 30, symbol: 'O' },
+    { cell: 2, symbol: 'X' }, { cell: 5, symbol: 'O' }, { cell: 3, symbol: 'X' }, { cell: 29, symbol: 'X' },
+  ]);
+  assert.equal(r.turn, oc.ORDER);
+  assert.deepEqual(pickMove(r, ocBot, oc.ORDER, 'hard'), { cell: 4, symbol: 'X' });
+});
+
+timed('gomoku', () => gomoku.replay({}, gomoku.X, [112, 113, 97, 98]), gomokuBot);
+timed('order-and-chaos', () => oc.createRound(), ocBot);

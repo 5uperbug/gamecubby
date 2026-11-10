@@ -18,6 +18,11 @@ import {
   confetti, fadeIntoClass, openDialog, pop, reveal, shake,
 } from '../../shared/js/effects.js';
 import { createStore } from '../../shared/js/storage.js';
+import {
+  OPPONENTS, isBot, pickMove, think,
+} from '../../shared/js/bot.js';
+import { addOpponentChoice, labelPlayers } from '../../shared/js/opponent.js';
+import bot from './bot.js';
 import { initThemeToggle } from '../../shared/js/theme.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -28,7 +33,9 @@ const ROLE_NAMES = { [ORDER]: 'Order', [CHAOS]: 'Chaos' };
 
 // ------------------------------------------------------------------- state
 
-const freshMatch = () => ({ scores: { [P1]: 0, [P2]: 0 }, roundNo: 1 });
+const BOT = P2; // the bot is always Player 2, so it swaps roles with you every round
+
+const freshMatch = (opponent = 'human') => ({ scores: { [P1]: 0, [P2]: 0 }, roundNo: 1, opponent });
 
 function loadMatch() {
   const saved = store.get('match');
@@ -39,6 +46,7 @@ function loadMatch() {
     if (Number.isInteger(n) && n >= 0) match.scores[p] = n;
   }
   if (Number.isInteger(saved.roundNo) && saved.roundNo > 0) match.roundNo = saved.roundNo;
+  if (OPPONENTS.includes(saved.opponent)) match.opponent = saved.opponent;
   return { match, moves: Array.isArray(saved.moves) ? saved.moves : [] };
 }
 
@@ -53,6 +61,20 @@ const ui = {
   tips: new Map(), // cell → symbols that would complete five there
   shown: { active: null, hint: '', scores: { ...match.scores } },
 };
+
+const vsBot = () => isBot(match.opponent);
+const botsTurn = () => vsBot() && !round.winner && playerFor(round.turn, match.roundNo) === BOT;
+
+/** Moves to take back so it is a person's turn again (0 if there are none). */
+function undoSteps() {
+  if (!vsBot()) return round.moves.length ? 1 : 0;
+  let r = round;
+  for (let n = 1; n <= round.moves.length; n += 1) {
+    r = undoRound(r);
+    if (playerFor(r.turn, match.roundNo) !== BOT) return n;
+  }
+  return 0;
+}
 
 function save() {
   store.set('match', { ...match, moves: round.moves });
@@ -204,8 +226,8 @@ function clearSelection() {
   cursor.classList.remove('on');
 }
 
-function select(c) {
-  if (ui.busy) return;
+function select(c, byBot = false) {
+  if (ui.busy || (!byBot && botsTurn())) return;
   if (round.winner) {
     // The round is over: point at the way forward.
     shake($('#hint'));
@@ -264,6 +286,7 @@ function hintFor() {
   }
   const player = who(playerFor(round.turn, n));
   const role = roleTag(round.turn);
+  if (botsTurn()) return `${player} (bot, ${role}) is thinking…`;
   if (ui.selected !== null) {
     const c = ui.selected;
     return `${player} (${role}): choose ${symbols} for row ${rowOf(c) + 1}, column ${colOf(c) + 1}.`;
@@ -293,6 +316,7 @@ function refresh({ holdScores = false } = {}) {
   document.body.classList.toggle('turn-chaos', role === CHAOS);
 
   setRoles();
+  labelPlayers(vsBot() && BOT);
   for (const pill of pills) {
     const on = pill.dataset.player === active;
     pill.classList.toggle('active', on);
@@ -324,11 +348,11 @@ function refresh({ holdScores = false } = {}) {
   const canPlace = !ui.busy && !over && ui.selected !== null;
   $('#btn-x').disabled = !canPlace;
   $('#btn-o').disabled = !canPlace;
-  $('#btn-undo').disabled = ui.busy || !round.moves.length;
+  $('#btn-undo').disabled = ui.busy || !undoSteps();
   const next = $('#btn-round');
   next.disabled = ui.busy || !round.moves.length;
   next.classList.toggle('quiet', !over);
-  board.classList.toggle('live', !over && !ui.busy);
+  board.classList.toggle('live', !over && !ui.busy && !botsTurn());
   labelCells();
 }
 
@@ -462,7 +486,7 @@ async function swapRoles() {
 // -------------------------------------------------------------------- flow
 
 async function place(symbol, how) {
-  if (ui.busy) return;
+  if (ui.busy || (how !== 'bot' && botsTurn())) return;
   if (round.winner) {
     // The round is over: point at the way forward.
     shake($('#hint'));
@@ -498,6 +522,23 @@ async function place(symbol, how) {
   refresh();
   if (how === 'keyboard' && round.winner) $('#btn-round').focus();
   followFocus();
+  botTurn();
+}
+
+/** Picks a square and a symbol for the bot, the same two steps a person takes. */
+async function botTurn() {
+  if (ui.busy || !botsTurn()) return;
+  ui.busy = true;
+  refresh();
+  await think();
+  ui.busy = false;
+  if (!botsTurn()) {
+    refresh();
+    return;
+  }
+  const { cell, symbol } = pickMove(round, bot, round.turn, match.opponent);
+  select(cell, true);
+  place(symbol, 'bot');
 }
 
 async function newRound(how) {
@@ -514,21 +555,24 @@ async function newRound(how) {
   ui.busy = false;
   refresh();
   if (how === 'keyboard') board.querySelector('.cell[tabindex="0"]').focus();
+  botTurn();
 }
 
 async function undoMove(how) {
-  if (ui.busy || !round.moves.length) return;
+  const steps = undoSteps();
+  if (ui.busy || !steps) return;
   ui.busy = true;
   clearSelection();
   refresh();
-  const last = round.moves.at(-1);
+  const taken = round.moves.slice(-steps);
+  const [last] = taken; // your move, offered again below
   const winner = roundWinner(round, match.roundNo);
   const lines = [...fxLayer.children];
   await Promise.all([
-    animate(markOf(last.cell), { opacity: 0, scale: 0.4, duration: ms(240), ease: 'inBack(1.5)' }),
+    animate(taken.map((m) => markOf(m.cell)), { opacity: 0, scale: 0.4, duration: ms(240), ease: 'inBack(1.5)' }),
     lines.length && animate(lines, { opacity: 0, duration: ms(200), ease: 'outQuad' }),
   ]);
-  round = undoRound(round);
+  for (let i = 0; i < steps; i += 1) round = undoRound(round);
   if (winner) match.scores[winner] = Math.max(0, match.scores[winner] - 1);
   save();
   sync();
@@ -539,20 +583,21 @@ async function undoMove(how) {
   if (how === 'keyboard') cells[last.cell].focus();
 }
 
-async function newMatch() {
+async function newMatch(opponent) {
   if (ui.busy) return;
   ui.busy = true;
   clearSelection();
   refresh();
   await sweep();
   const swapping = roleOf(P1, match.roundNo) !== ORDER;
-  match = freshMatch();
+  match = freshMatch(opponent);
   round = createRound();
   save();
   sync();
   if (swapping) await swapRoles();
   ui.busy = false;
   refresh();
+  botTurn();
 }
 
 // ------------------------------------------------------------------- input
@@ -597,8 +642,10 @@ $('#btn-round').addEventListener('click', (e) => newRound(e.detail === 0 ? 'keyb
 
 const matchDialog = $('#dlg-match');
 const matchForm = matchDialog.querySelector('form');
+addOpponentChoice(matchForm, 'Player 1');
 $('#btn-match').addEventListener('click', () => {
   matchForm.threats.checked = prefs.threats;
+  matchForm.elements.opponent.value = match.opponent;
   matchDialog.returnValue = '';
   openDialog(matchDialog);
 });
@@ -606,7 +653,7 @@ matchDialog.addEventListener('close', () => {
   if (matchDialog.returnValue !== 'start') return;
   prefs = { threats: matchForm.threats.checked };
   store.set('prefs', prefs);
-  newMatch();
+  newMatch(matchForm.elements.opponent.value);
 });
 
 $('#btn-rules').addEventListener('click', () => openDialog($('#dlg-rules')));
@@ -643,6 +690,7 @@ async function boot() {
   ui.busy = false;
   refresh();
   followFocus();
+  botTurn();
 }
 
 boot();

@@ -258,7 +258,7 @@ async function botTurn() {
   ui.pending = { b, c };
   view.showPending(b, c, state.turn);
   refresh();
-  await wait(ms(400));
+  await wait(400);
   ui.busy = false;
   confirmMove();
 }
