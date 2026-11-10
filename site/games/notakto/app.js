@@ -16,6 +16,11 @@ import {
   confetti, fadeIntoClass, openDialog, pop, reveal, shake,
 } from '../../shared/js/effects.js';
 import { createStore } from '../../shared/js/storage.js';
+import {
+  OPPONENTS, isBot, pickMove, think,
+} from '../../shared/js/bot.js';
+import { addOpponentChoice, labelPlayers } from '../../shared/js/opponent.js';
+import bot from './bot.js';
 import { initThemeToggle } from '../../shared/js/theme.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -26,8 +31,10 @@ const NAMES = { [X]: 'Player 1', [O]: 'Player 2' };
 
 // ------------------------------------------------------------------- state
 
-const freshMatch = (boardCount = DEFAULT_BOARD_COUNT) => ({
-  scores: { [X]: 0, [O]: 0 }, roundNo: 1, starter: X, boardCount,
+const BOT = O; // the bot always plays Player 2
+
+const freshMatch = (boardCount = DEFAULT_BOARD_COUNT, opponent = 'human') => ({
+  scores: { [X]: 0, [O]: 0 }, roundNo: 1, starter: X, boardCount, opponent,
 });
 
 function loadMatch() {
@@ -41,6 +48,7 @@ function loadMatch() {
   if (Number.isInteger(saved.roundNo) && saved.roundNo > 0) match.roundNo = saved.roundNo;
   if (saved.starter === O) match.starter = O;
   if (BOARD_COUNTS.includes(saved.boardCount)) match.boardCount = saved.boardCount;
+  if (OPPONENTS.includes(saved.opponent)) match.opponent = saved.opponent;
   return { match, moves: Array.isArray(saved.moves) ? saved.moves : [] };
 }
 
@@ -55,6 +63,20 @@ const ui = {
   focus: [0, 0], // the cell holding the boards' tab stop
   shown: { active: null, over: false, hint: '', scores: { ...match.scores } },
 };
+
+const vsBot = () => isBot(match.opponent);
+const botsTurn = () => vsBot() && !round.winner && round.turn === BOT;
+
+/** Moves to take back so it is a person's turn again (0 if there are none). */
+function undoSteps() {
+  if (!vsBot()) return round.moves.length ? 1 : 0;
+  let r = round;
+  for (let n = 1; n <= round.moves.length; n += 1) {
+    r = undoRound(r);
+    if (r.turn !== BOT) return n;
+  }
+  return 0;
+}
 
 function save() {
   store.set('match', { ...match, moves: round.moves });
@@ -306,6 +328,7 @@ function hintFor() {
   const line = many ? 'the last line' : 'a line';
   if (round.winner) return `${tag(round.loser)} completed ${line}, so ${tag(round.winner)} wins round ${n}!`;
   const p = tag(round.turn);
+  if (botsTurn()) return `${tag(BOT)} (bot) is thinking…`;
   if (!round.moves.length) {
     return `Round ${n}: ${p} goes first. Don’t complete a line${many ? ' on the last live board' : ''}.`;
   }
@@ -326,6 +349,7 @@ function showStatus() {
   document.body.classList.toggle('turn-o', active === O);
   document.body.classList.toggle('turn-x', active === X);
 
+  labelPlayers(vsBot() && BOT);
   for (const pill of document.querySelectorAll('.player')) {
     const on = pill.dataset.player === active;
     pill.classList.toggle('active', on);
@@ -364,11 +388,11 @@ function refresh({ hold = false } = {}) {
   const over = Boolean(round.winner);
   const count = round.boardCount;
   $('#round-note').textContent = `Round ${match.roundNo} · ${count} ${count === 1 ? 'board' : 'boards'}`;
-  $('#btn-undo').disabled = ui.busy || !round.moves.length;
+  $('#btn-undo').disabled = ui.busy || !undoSteps();
   const next = $('#btn-round');
   next.disabled = ui.busy || !round.moves.length;
   next.classList.toggle('quiet', !over);
-  board.classList.toggle('live', !over && !ui.busy);
+  board.classList.toggle('live', !over && !ui.busy && !botsTurn());
 }
 
 // -------------------------------------------------------------- animations
@@ -493,7 +517,7 @@ function bounce() {
 // -------------------------------------------------------------------- flow
 
 async function place(b, c, how) {
-  if (ui.busy) return;
+  if (ui.busy || (how !== 'bot' && botsTurn())) return;
   if (round.winner) {
     // The round is over: point at the way forward.
     shake($('#hint'));
@@ -528,28 +552,43 @@ async function place(b, c, how) {
   ui.busy = false;
   updateTabStops();
   refresh();
+  botTurn();
   if (how !== 'keyboard') return;
   if (round.winner) $('#btn-round').focus();
   else if (killed) focusCell(...ui.focus);
 }
 
-async function undoMove() {
-  if (ui.busy || !round.moves.length) return;
+/** Plays the bot's move if it is the bot's turn. */
+async function botTurn() {
+  if (ui.busy || !botsTurn()) return;
   ui.busy = true;
   refresh();
-  const [b, c] = round.moves.at(-1);
-  const result = round.winner;
-  const killed = !isLive(round, b);
-  const extras = killed ? [...tiles[b].fx.children] : [];
-  await Promise.all([
-    animate(markOf(b, c), { opacity: 0, scale: 0.4, duration: ms(240), ease: 'inBack(1.5)' }),
-    extras.length && animate(extras, { opacity: 0, duration: ms(220), ease: 'outQuad' }),
-  ]);
-  round = undoRound(round);
-  if (result) match.scores[result] = Math.max(0, match.scores[result] - 1);
-  save();
-  if (killed) await brighten(b);
-  sync();
+  await think();
+  ui.busy = false;
+  if (botsTurn()) place(...pickMove(round, bot, BOT, match.opponent), 'bot');
+  else refresh();
+}
+
+async function undoMove() {
+  const steps = undoSteps();
+  if (ui.busy || !steps) return;
+  ui.busy = true;
+  refresh();
+  for (let i = 0; i < steps; i += 1) {
+    const [b, c] = round.moves.at(-1);
+    const result = round.winner;
+    const killed = !isLive(round, b);
+    const extras = killed ? [...tiles[b].fx.children] : [];
+    await Promise.all([
+      animate(markOf(b, c), { opacity: 0, scale: 0.4, duration: ms(240), ease: 'inBack(1.5)' }),
+      extras.length && animate(extras, { opacity: 0, duration: ms(220), ease: 'outQuad' }),
+    ]);
+    round = undoRound(round);
+    if (result) match.scores[result] = Math.max(0, match.scores[result] - 1);
+    save();
+    if (killed) await brighten(b);
+    sync();
+  }
   ui.busy = false;
   refresh();
 }
@@ -567,14 +606,15 @@ async function newRound() {
   await bounce();
   ui.busy = false;
   refresh();
+  botTurn();
 }
 
-async function newMatch(boardCount) {
+async function newMatch(boardCount, opponent) {
   if (ui.busy) return;
   ui.busy = true;
   refresh();
   await sweep();
-  match = freshMatch(boardCount);
+  match = freshMatch(boardCount, opponent);
   round = createRound(roundSettings());
   save();
   if (boardCount === tiles.length) {
@@ -591,6 +631,7 @@ async function newMatch(boardCount) {
   }
   ui.busy = false;
   refresh();
+  botTurn();
 }
 
 // ------------------------------------------------------------------- input
@@ -633,13 +674,15 @@ $('#btn-rules').addEventListener('click', () => openDialog($('#dlg-rules')));
 
 const matchDialog = $('#dlg-match');
 const matchForm = matchDialog.querySelector('form');
+addOpponentChoice(matchForm, 'Player 1');
 $('#btn-match').addEventListener('click', () => {
   matchForm.boards.value = String(match.boardCount);
+  matchForm.elements.opponent.value = match.opponent;
   matchDialog.returnValue = '';
   openDialog(matchDialog);
 });
 matchDialog.addEventListener('close', () => {
-  if (matchDialog.returnValue === 'start') newMatch(Number(matchForm.boards.value));
+  if (matchDialog.returnValue === 'start') newMatch(Number(matchForm.boards.value), matchForm.elements.opponent.value);
 });
 
 document.addEventListener('keydown', (e) => {
@@ -663,6 +706,7 @@ async function boot() {
   await intro();
   ui.busy = false;
   refresh();
+  botTurn();
 }
 
 boot();

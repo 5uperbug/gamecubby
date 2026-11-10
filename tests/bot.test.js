@@ -4,6 +4,12 @@ import assert from 'node:assert/strict';
 import { pickMove } from '../site/shared/js/bot.js';
 import * as ttt from '../site/games/tic-tac-toe/game.js';
 import tttBot from '../site/games/tic-tac-toe/bot.js';
+import * as four from '../site/games/four-in-a-row/game.js';
+import fourBot from '../site/games/four-in-a-row/bot.js';
+import * as rev from '../site/games/reversi/game.js';
+import revBot from '../site/games/reversi/bot.js';
+import * as nk from '../site/games/notakto/game.js';
+import nkBot from '../site/games/notakto/bot.js';
 
 /** Plays random legal moves from `state` until `stop(state)` or the game ends. */
 function randomPlay(state, adapter, plies, rng = Math.random) {
@@ -58,3 +64,39 @@ test('tic-tac-toe: hard never loses to random play', () => {
     assert.notEqual(tttBot.outcome(r, botSide), -1);
   }
 });
+
+legalFrom('four-in-a-row', () => four.createRound(), fourBot, four.isLegal);
+legalFrom('reversi', () => rev.createRound(), revBot, rev.isLegal);
+for (const boardCount of nk.BOARD_COUNTS) {
+  legalFrom(`notakto (${boardCount} boards)`, () => nk.createRound({ boardCount }), nkBot, (r, [b, c]) => nk.isLegal(r, b, c));
+}
+
+test('four-in-a-row: hard takes a win and blocks a loss', () => {
+  // X has three across the bottom (cols 0-2); X to move wins at 3.
+  let r = four.replayRound(four.X, [0, 0, 1, 1, 2, 6]);
+  assert.equal(pickMove(r, fourBot, four.X, 'hard'), 3);
+  // Same threat with O to move: O must block at 3.
+  r = four.replayRound(four.X, [0, 0, 1, 1, 2]);
+  assert.equal(pickMove(r, fourBot, four.O, 'hard'), 3);
+});
+
+test('notakto: hard avoids killing the last board when it can', () => {
+  // One board, X at 0 and 1: playing 2 loses, anything else doesn't.
+  const r = nk.replayRound({ boardCount: 1 }, [[0, 0], [0, 1]]);
+  for (let k = 0; k < 10; k += 1) assert.notDeepEqual(pickMove(r, nkBot, r.turn, 'hard'), [0, 2]);
+});
+
+/** Hard's first reply on an empty board, timed. */
+function timed(name, fresh, adapter, limit = 1000) {
+  test(`${name}: hard thinks in under ${limit} ms`, () => {
+    const s = fresh();
+    const t = performance.now();
+    pickMove(s, adapter, adapter.turn(s), 'hard');
+    const took = performance.now() - t;
+    assert.ok(took < limit, `took ${Math.round(took)} ms`);
+  });
+}
+
+timed('four-in-a-row', () => four.createRound(), fourBot);
+timed('reversi', () => rev.createRound(), revBot);
+timed('notakto', () => nk.createRound({ boardCount: 3 }), nkBot);

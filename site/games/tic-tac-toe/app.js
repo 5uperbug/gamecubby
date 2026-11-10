@@ -18,6 +18,7 @@ import { createStore } from '../../shared/js/storage.js';
 import {
   OPPONENTS, isBot, pickMove, think,
 } from '../../shared/js/bot.js';
+import { addOpponentChoice, labelPlayers } from '../../shared/js/opponent.js';
 import bot from './bot.js';
 import { initThemeToggle } from '../../shared/js/theme.js';
 
@@ -165,10 +166,8 @@ function refresh({ holdScores = false } = {}) {
   document.body.classList.toggle('turn-o', accent === O);
   document.body.classList.toggle('turn-x', accent === X);
 
+  labelPlayers(vsBot() && BOT);
   for (const pill of document.querySelectorAll('.player')) {
-    const name = pill.querySelector('.player-name');
-    const p = pill.dataset.player;
-    name.textContent = vsBot() ? (p === BOT ? 'Bot' : 'You') : `Player ${p}`;
     const on = pill.dataset.player === active;
     pill.classList.toggle('active', on);
     if (on && ui.shown.active !== active) animate(pill, { scale: [0.92, 1], duration: ms(500), ease: 'outBack(2.2)' });
@@ -390,6 +389,7 @@ $('#btn-round').addEventListener('click', newRound);
 
 const matchDialog = $('#dlg-match');
 const matchForm = matchDialog.querySelector('form');
+addOpponentChoice(matchForm, X);
 $('#btn-match').addEventListener('click', () => {
   matchForm.elements.opponent.value = match.opponent;
   matchDialog.returnValue = '';

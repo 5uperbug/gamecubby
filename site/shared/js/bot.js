@@ -6,7 +6,7 @@
 //   turn(s)         who moves next
 //   outcome(s, me)  null while the game is on, else 1 (me won), 0 (draw), -1 (me lost)
 //   score(s, me)    a guess at how good a live position is for me (bigger is better)
-//   depth           how far Hard looks ahead, in moves
+//   depth           how far Hard looks ahead, in moves (or a function of the state)
 //
 // Minimax rather than negamax: in some games the same side moves twice in a
 // row (a completed box, an opponent who must pass, a mill's removal).
@@ -64,7 +64,8 @@ export function pickMove(state, adapter, me, level = 'hard', rng = Math.random) 
   const moves = shuffle(adapter.moves(state), rng);
   if (!moves.length) return null;
   if (level === 'easy' && rng() < EASY_BLUNDER) return moves[0];
-  const depth = level === 'easy' ? 1 : adapter.depth;
+  const { depth: hard } = adapter;
+  const depth = level === 'easy' ? 1 : (typeof hard === 'function' ? hard(state) : hard);
   let best = moves[0];
   let alpha = -Infinity;
   for (const m of moves) {
