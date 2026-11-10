@@ -15,6 +15,11 @@ import {
   confetti, fadeIntoClass, openDialog, pop, reveal, shake,
 } from '../../shared/js/effects.js';
 import { createStore } from '../../shared/js/storage.js';
+import {
+  OPPONENTS, isBot, pickMove, think,
+} from '../../shared/js/bot.js';
+import { addOpponentChoice, labelPlayers } from '../../shared/js/opponent.js';
+import bot from './bot.js';
 import { initThemeToggle } from '../../shared/js/theme.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -24,7 +29,11 @@ const NAMES = { [X]: 'Red', [O]: 'Blue' };
 
 // ------------------------------------------------------------------- state
 
-const freshMatch = () => ({ scores: { X: 0, O: 0, D: 0 }, roundNo: 1, starter: X });
+const BOT = O; // the bot always plays Blue
+
+const freshMatch = (opponent = 'human') => ({
+  scores: { X: 0, O: 0, D: 0 }, roundNo: 1, starter: X, opponent,
+});
 
 function loadMatch() {
   const saved = store.get('match');
@@ -36,6 +45,7 @@ function loadMatch() {
   }
   if (Number.isInteger(saved.roundNo) && saved.roundNo > 0) match.roundNo = saved.roundNo;
   if (saved.starter === O) match.starter = O;
+  if (OPPONENTS.includes(saved.opponent)) match.opponent = saved.opponent;
   return { match, moves: Array.isArray(saved.moves) ? saved.moves : [] };
 }
 
@@ -49,6 +59,20 @@ const ui = {
   roving: 0, // the point in the tab order
   shown: { active: null, hint: '', scores: { ...match.scores } },
 };
+
+const vsBot = () => isBot(match.opponent);
+const botsTurn = () => vsBot() && !round.winner && round.turn === BOT;
+
+/** Moves to take back so it is a person's turn again (0 if there are none). */
+function undoSteps() {
+  if (!vsBot()) return round.moves.length ? 1 : 0;
+  let r = round;
+  for (let n = 1; n <= round.moves.length; n += 1) {
+    r = undoRound(r);
+    if (r.turn !== BOT) return n;
+  }
+  return 0;
+}
 
 function save() {
   store.set('match', { ...match, moves: round.moves });
@@ -167,6 +191,7 @@ function hintFor() {
   if (round.reason === 'pieces') return `${tag(round.winner)} wins round ${n}: ${tag(other(round.winner))} is down to two pieces! ${NEXT_ROUND}`;
   if (round.reason === 'blocked') return `${tag(round.winner)} wins round ${n}: ${tag(other(round.winner))} has no move left! ${NEXT_ROUND}`;
   const phase = phaseOf(round);
+  if (botsTurn()) return `${tag(BOT)} (bot) is ${phase === 'remove' ? 'choosing a piece to take' : 'thinking'}…`;
   if (phase === 'remove') return `Mill! ${tag(turn)}, remove a ${tag(other(turn))} piece.`;
   if (phase === 'place') {
     if (!round.moves.length) return `Round ${n}: ${tag(turn)} goes first. Tap a point to place a piece.`;
@@ -192,6 +217,7 @@ function refresh({ holdScores = false } = {}) {
   document.body.classList.toggle('turn-o', accent === O);
   document.body.classList.toggle('turn-x', accent === X);
 
+  labelPlayers(vsBot() && BOT);
   for (const pill of document.querySelectorAll('.player')) {
     const on = pill.dataset.player === active;
     pill.classList.toggle('active', on);
@@ -222,11 +248,11 @@ function refresh({ holdScores = false } = {}) {
   const notes = [`Round ${match.roundNo}`, `${draws} ${draws === 1 ? 'draw' : 'draws'}`];
   if (!over && round.quiet >= QUIET_LIMIT - 20) notes.push(`${QUIET_LIMIT - round.quiet} moves left to make a mill`);
   $('#round-note').textContent = notes.join(' · ');
-  $('#btn-undo').disabled = ui.busy || !round.moves.length;
+  $('#btn-undo').disabled = ui.busy || !undoSteps();
   const next = $('#btn-round');
   next.disabled = ui.busy || !round.moves.length;
   next.classList.toggle('quiet', !over);
-  board.classList.toggle('live', !over && !ui.busy);
+  board.classList.toggle('live', !over && !ui.busy && !botsTurn());
   markPoints();
 }
 
@@ -283,7 +309,7 @@ function nudge(p) {
 
 /** A tap or Enter on point `p`: place, pick up, move or remove, depending on the phase. */
 function tap(p, how) {
-  if (ui.busy) return;
+  if (ui.busy || botsTurn()) return;
   const phase = phaseOf(round);
   if (phase === 'over') {
     // The round is over: point at the way forward.
@@ -351,6 +377,18 @@ async function commit(action, how) {
   ui.busy = false;
   refresh();
   if (how === 'keyboard' && round.winner) $('#btn-round').focus();
+  botTurn();
+}
+
+/** Plays the bot's move if it is the bot's turn. */
+async function botTurn() {
+  if (ui.busy || !botsTurn()) return;
+  ui.busy = true;
+  refresh();
+  await think();
+  ui.busy = false;
+  if (botsTurn()) commit(pickMove(round, bot, BOT, match.opponent), 'bot');
+  else refresh();
 }
 
 /**
@@ -377,14 +415,16 @@ async function newRound() {
   ui.busy = false;
   refresh();
   if (focused) restoreFocus(button);
+  botTurn();
 }
 
 function undoMove() {
-  if (ui.busy || !round.moves.length) return;
+  const steps = undoSteps();
+  if (ui.busy || !steps) return;
   const button = $('#btn-undo');
   const focused = document.activeElement === button;
   if (round.winner) match.scores[round.winner] = Math.max(0, match.scores[round.winner] - 1);
-  round = undoRound(round);
+  for (let i = 0; i < steps; i += 1) round = undoRound(round);
   ui.selected = null;
   save();
   sync();
@@ -392,18 +432,19 @@ function undoMove() {
   if (focused) restoreFocus(button);
 }
 
-async function newMatch() {
+async function newMatch(opponent) {
   if (ui.busy) return;
   ui.busy = true;
   ui.selected = null;
   refresh();
   await sweep();
-  match = freshMatch();
+  match = freshMatch(opponent);
   round = createRound(match.starter);
   save();
   sync();
   ui.busy = false;
   refresh();
+  botTurn();
 }
 
 // ------------------------------------------------------------------- input
@@ -461,12 +502,15 @@ $('#btn-round').addEventListener('click', newRound);
 $('#btn-rules').addEventListener('click', () => openDialog($('#dlg-rules')));
 
 const matchDialog = $('#dlg-match');
+const matchForm = matchDialog.querySelector('form');
+addOpponentChoice(matchForm, 'Red');
 $('#btn-match').addEventListener('click', () => {
+  matchForm.elements.opponent.value = match.opponent;
   matchDialog.returnValue = '';
   openDialog(matchDialog);
 });
 matchDialog.addEventListener('close', () => {
-  if (matchDialog.returnValue === 'start') newMatch();
+  if (matchDialog.returnValue === 'start') newMatch(matchForm.elements.opponent.value);
 });
 
 document.addEventListener('keydown', (e) => {
@@ -493,6 +537,7 @@ async function boot() {
   await intro();
   ui.busy = false;
   refresh();
+  botTurn();
 }
 
 boot();

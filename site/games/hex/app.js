@@ -15,6 +15,11 @@ import {
   confetti, fadeIntoClass, openDialog, pop, reveal, shake,
 } from '../../shared/js/effects.js';
 import { createStore } from '../../shared/js/storage.js';
+import {
+  OPPONENTS, isBot, pickMove, think,
+} from '../../shared/js/bot.js';
+import { addOpponentChoice, labelPlayers } from '../../shared/js/opponent.js';
+import bot from './bot.js';
 import { initThemeToggle } from '../../shared/js/theme.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -25,22 +30,39 @@ const GOAL = { [X]: 'top to bottom', [O]: 'left to right' };
 
 // ------------------------------------------------------------------- state
 
+const BOT = O; // the bot always plays Blue
+
 const freshWins = () => ({ X: 0, O: 0 });
 
 function loadMatch() {
   const saved = store.get('match');
   const wins = freshWins();
-  if (!saved || typeof saved !== 'object') return { wins, game: createGame() };
+  if (!saved || typeof saved !== 'object') return { wins, game: createGame(), opponent: 'human' };
   for (const key of Object.keys(wins)) {
     const n = saved.wins?.[key];
     if (Number.isInteger(n) && n >= 0) wins[key] = n;
   }
   const moves = Array.isArray(saved.moves) ? saved.moves : [];
-  return { wins, game: replay(saved.size, saved.starter, moves, saved.swapRule !== false) };
+  const opponent = OPPONENTS.includes(saved.opponent) ? saved.opponent : 'human';
+  return { wins, game: replay(saved.size, saved.starter, moves, saved.swapRule !== false), opponent };
 }
 
 const loaded = loadMatch();
-let { wins, game } = loaded;
+let { wins, game, opponent } = loaded;
+
+const vsBot = () => isBot(opponent);
+const botsTurn = () => vsBot() && !game.winner && game.turn === BOT;
+
+/** Moves to take back so it is a person's turn again (0 if there are none). */
+function undoSteps() {
+  if (!vsBot()) return game.moves.length ? 1 : 0;
+  let g = game;
+  for (let n = 1; n <= game.moves.length; n += 1) {
+    g = undoGame(g);
+    if (g.turn !== BOT) return n;
+  }
+  return 0;
+}
 
 const ui = {
   busy: false, // an animation owns the board
@@ -49,7 +71,7 @@ const ui = {
 
 function save() {
   store.set('match', {
-    wins, size: game.size, starter: game.starter, swapRule: game.swapRule, moves: game.moves,
+    wins, size: game.size, starter: game.starter, swapRule: game.swapRule, moves: game.moves, opponent,
   });
 }
 
@@ -167,6 +189,7 @@ function hintFor() {
     return `${tag(game.winner)} connects ${GOAL[game.winner]} in ${game.moves.length} moves!`;
   }
   const p = tag(game.turn);
+  if (botsTurn()) return `${tag(BOT)} (bot) is thinking…`;
   if (!game.moves.length) return `${p} goes first. Tap any empty hexagon to place a stone.`;
   const last = lastCell(game);
   if (canSwap(game)) {
@@ -185,6 +208,7 @@ function refresh({ holdScores = false } = {}) {
   document.body.classList.toggle('turn-o', active === O);
   document.body.classList.toggle('turn-x', active === X);
 
+  labelPlayers(vsBot() && BOT);
   for (const pill of document.querySelectorAll('.player')) {
     const on = pill.dataset.player === active;
     pill.classList.toggle('active', on);
@@ -211,11 +235,11 @@ function refresh({ holdScores = false } = {}) {
 
   const n = game.size;
   $('#match-note').textContent = `${n}×${n} board · Red: top to bottom · Blue: left to right`;
-  $('#btn-undo').disabled = ui.busy || !game.moves.length;
-  $('#btn-swap').hidden = !canSwap(game);
+  $('#btn-undo').disabled = ui.busy || !undoSteps();
+  $('#btn-swap').hidden = !canSwap(game) || botsTurn();
   $('#btn-swap').disabled = ui.busy;
   $('#btn-play').disabled = ui.busy || !over;
-  board.classList.toggle('live', !over && !ui.busy);
+  board.classList.toggle('live', !over && !ui.busy && !botsTurn());
 }
 
 // -------------------------------------------------------------- animations
@@ -295,8 +319,8 @@ async function takeBack(cell) {
 
 // -------------------------------------------------------------------- flow
 
-async function place(cell) {
-  if (ui.busy) return;
+async function place(cell, how) {
+  if (ui.busy || (how !== 'bot' && botsTurn())) return;
   if (game.winner) {
     // The game is over: point at the way forward.
     shake($('#hint'));
@@ -321,11 +345,28 @@ async function place(cell) {
   ui.busy = false;
   refresh();
   if (game.winner) showResult();
+  botTurn();
+}
+
+/** Plays the bot's move (a stone, or taking over the first one) if it is the bot's turn. */
+async function botTurn() {
+  if (ui.busy || !botsTurn()) return;
+  ui.busy = true;
+  refresh();
+  await think();
+  ui.busy = false;
+  if (!botsTurn()) {
+    refresh();
+    return;
+  }
+  const move = pickMove(game, bot, BOT, opponent);
+  if (move === SWAP) swapMove('bot');
+  else place(move, 'bot');
 }
 
 /** The second player takes over the first stone: it fades out and reappears mirrored in their colour. */
-async function swapMove() {
-  if (ui.busy || !canSwap(game)) return;
+async function swapMove(how) {
+  if (ui.busy || !canSwap(game) || (how !== 'bot' && botsTurn())) return;
   ui.busy = true;
   const from = game.moves[0];
   refresh();
@@ -340,16 +381,21 @@ async function swapMove() {
   await dropStone(to);
   ui.busy = false;
   refresh();
+  botTurn();
 }
 
 async function undoMove() {
-  if (ui.busy || !game.moves.length) return;
+  const steps = undoSteps();
+  if (ui.busy || !steps) return;
   ui.busy = true;
   hideResult(false);
   refresh();
   const { winner } = game;
-  await takeBack(lastCell(game));
-  game = undoGame(game);
+  for (let i = 0; i < steps; i += 1) {
+    await takeBack(lastCell(game));
+    game = undoGame(game);
+    sync();
+  }
   if (winner) wins[winner] = Math.max(0, wins[winner] - 1);
   save();
   sync();
@@ -357,7 +403,7 @@ async function undoMove() {
   refresh();
 }
 
-async function newGame(size = game.size, { resetWins = false, swapRule = game.swapRule } = {}) {
+async function newGame(size = game.size, { resetWins = false, swapRule = game.swapRule, against = opponent } = {}) {
   if (ui.busy) return;
   ui.busy = true;
   hideResult(false);
@@ -365,11 +411,12 @@ async function newGame(size = game.size, { resetWins = false, swapRule = game.sw
   await sweep();
   // Players take turns going first. A game with no stones placed does not count.
   let starter = game.moves.length ? other(game.starter) : game.starter;
-  if (resetWins) {
+  if (resetWins || against !== opponent) {
     wins = freshWins();
     starter = X;
   }
   game = createGame(size, starter, swapRule);
+  opponent = against;
   save();
   sync();
   setRoving(Math.floor(game.cells.length / 2));
@@ -377,6 +424,7 @@ async function newGame(size = game.size, { resetWins = false, swapRule = game.sw
   await intro();
   ui.busy = false;
   refresh();
+  botTurn();
 }
 
 // ------------------------------------------------------------------ result
@@ -461,7 +509,7 @@ const button = (action) => async (e) => {
 };
 
 $('#btn-undo').addEventListener('click', button(undoMove));
-$('#btn-swap').addEventListener('click', button(swapMove));
+$('#btn-swap').addEventListener('click', button(() => swapMove()));
 $('#btn-play').addEventListener('click', button(() => newGame()));
 $('#btn-again').addEventListener('click', button(() => newGame()));
 $('#btn-review').addEventListener('click', async (e) => {
@@ -472,11 +520,13 @@ $('#btn-review').addEventListener('click', async (e) => {
 
 const newDialog = $('#dlg-new');
 const newForm = newDialog.querySelector('form');
+addOpponentChoice(newForm, 'Red');
 
 $('#btn-new').addEventListener('click', () => {
   newForm.elements.boardsize.value = String(game.size);
   newForm.elements.resetwins.checked = false;
   newForm.elements.swaprule.checked = game.swapRule;
+  newForm.elements.opponent.value = opponent;
   newDialog.returnValue = '';
   openDialog(newDialog);
 });
@@ -487,6 +537,7 @@ newDialog.addEventListener('close', () => {
   newGame(size, {
     resetWins: newForm.elements.resetwins.checked,
     swapRule: newForm.elements.swaprule.checked,
+    against: newForm.elements.opponent.value,
   });
 });
 
@@ -515,6 +566,7 @@ async function boot() {
   ui.busy = false;
   refresh();
   if (game.winner) showResult();
+  botTurn();
 }
 
 boot();

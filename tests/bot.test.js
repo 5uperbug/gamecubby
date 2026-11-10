@@ -18,6 +18,10 @@ import * as gomoku from '../site/games/gomoku/game.js';
 import gomokuBot from '../site/games/gomoku/bot.js';
 import * as oc from '../site/games/order-and-chaos/game.js';
 import ocBot from '../site/games/order-and-chaos/bot.js';
+import * as nmm from '../site/games/nine-mens-morris/game.js';
+import nmmBot from '../site/games/nine-mens-morris/bot.js';
+import * as hex from '../site/games/hex/game.js';
+import hexBot from '../site/games/hex/bot.js';
 
 /** Plays random legal moves from `state` until `stop(state)` or the game ends. */
 function randomPlay(state, adapter, plies, rng = Math.random) {
@@ -184,3 +188,42 @@ test('order-and-chaos: Order completes five', () => {
 
 timed('gomoku', () => gomoku.replay({}, gomoku.X, [112, 113, 97, 98]), gomokuBot);
 timed('order-and-chaos', () => oc.createRound(), ocBot);
+
+legalFrom('nine-mens-morris', () => nmm.createRound(), nmmBot, nmm.isLegal, [0, 10, 20, 40]);
+
+test('nine-mens-morris: hard closes a mill, then blocks one', () => {
+  // X holds 0 and 1 (mill 0-1-2 open); O elsewhere. X to place: 2 closes it.
+  let r = nmm.replayRound(nmm.X, [{ to: 0 }, { to: 21 }, { to: 1 }, { to: 23 }]);
+  assert.deepEqual(pickMove(r, nmmBot, nmm.X, 'hard'), { to: 2 });
+  // Same, but O to place: it must block at 2.
+  r = nmm.replayRound(nmm.X, [{ to: 0 }, { to: 21 }, { to: 1 }]);
+  assert.deepEqual(pickMove(r, nmmBot, nmm.O, 'hard'), { to: 2 });
+});
+
+timed('nine-mens-morris', () => nmm.createRound(), nmmBot);
+
+const hexLegal = (g, m) => (m === hex.SWAP ? hex.canSwap(g) : hex.isLegal(g, m));
+for (const size of hex.SIZES) {
+  legalFrom(`hex (${size}×${size})`, () => hex.createGame(size), hexBot, hexLegal, [0, 1, 6, 20]);
+}
+
+test('hex: hard completes its chain and blocks the last gap', () => {
+  const n = 7;
+  const at = (r, c) => hex.cellAt(n, r, c);
+  // Red (X) holds column 3 from row 0 to row 5; Blue scattered on the left. Red to move wins at row 6.
+  const red = [0, 1, 2, 3, 4, 5].map((r) => at(r, 3));
+  const blue = [0, 1, 2, 3, 4, 5].map((r) => at(r, 0));
+  const moves = red.flatMap((c, i) => [c, blue[i]]);
+  let g = hex.replay(n, hex.X, moves, false);
+  const wins = [at(6, 3), at(6, 2)]; // both touch (5, 3)
+  assert.ok(wins.includes(pickMove(g, hexBot, hex.X, 'hard')));
+  // Red holds rows 0-4 of column 3 plus (6, 3): the only gap is (5, 3). Blue to move must take it.
+  const redGap = [0, 1, 2, 3, 4].map((r) => at(r, 3)).concat(at(6, 3));
+  const blueFar = [0, 1, 2, 3, 4].map((r) => at(r, 0));
+  g = hex.replay(n, hex.X, redGap.flatMap((c, i) => (i < blueFar.length ? [c, blueFar[i]] : [c])), false);
+  assert.equal(g.turn, hex.O);
+  assert.equal(pickMove(g, hexBot, hex.O, 'hard'), at(5, 3));
+});
+
+timed('hex 9×9', () => hex.replay(9, hex.X, [40]), hexBot);
+timed('hex 11×11', () => hex.replay(11, hex.X, [60]), hexBot);
