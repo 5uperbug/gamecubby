@@ -1,10 +1,12 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Game Cubby</title>
-  <meta name="description" content="Pen-and-paper classics for two players sharing one screen: tic-tac-toe and its variants, dots and boxes, and more.">
+  <meta name="description"
+    content="Ten classic two-player games — tic-tac-toe, four in a row, reversi, hex and more. Play a friend on one screen or take on the bot.">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0f1420" media="(prefers-color-scheme: dark)">
@@ -14,29 +16,38 @@
   <link rel="stylesheet" href="home.css">
   <script type="module" src="home.js"></script>
 </head>
+
 <body>
   <header class="topbar" data-reveal>
     <a class="brand" href="./" aria-current="page">
       <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
-        <defs><clipPath id="logo-slot"><rect x="7.5" y="7.5" width="17" height="49"/></clipPath></defs>
+        <defs>
+          <clipPath id="logo-slot">
+            <rect x="7.5" y="7.5" width="17" height="49" />
+          </clipPath>
+        </defs>
         <g class="logo-body">
-          <rect class="logo-frame" x="5" y="5" width="54" height="54" rx="11"/>
-          <path class="logo-shelf" d="M27 5v54M27 32h32"/>
+          <rect class="logo-frame" x="5" y="5" width="54" height="54" rx="11" />
+          <path class="logo-shelf" d="M27 5v54M27 32h32" />
         </g>
         <g clip-path="url(#logo-slot)">
-          <circle class="logo-disc disc-x" cx="16" cy="47.5" r="6.4" data-drop="48"/>
-          <circle class="logo-disc disc-o" cx="16" cy="33.6" r="6.4" data-drop="34"/>
+          <circle class="logo-disc disc-x" cx="16" cy="47.5" r="6.4" data-drop="48" />
+          <circle class="logo-disc disc-o" cx="16" cy="33.6" r="6.4" data-drop="34" />
         </g>
-        <path class="logo-x" d="M37.6 13.6l10.8 10.8M48.4 13.6l-10.8 10.8"/>
-        <circle class="logo-o" cx="43" cy="45.5" r="6"/>
+        <path class="logo-x" d="M37.6 13.6l10.8 10.8M48.4 13.6l-10.8 10.8" />
+        <circle class="logo-o" cx="43" cy="45.5" r="6" />
       </svg>
       <span class="brand-text">Game Cubby</span>
     </a>
     <nav class="top-actions" aria-label="Site">
       <button class="icon-btn" id="btn-theme" type="button" aria-label="Switch to dark theme">
         <svg class="theme-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <g class="sun"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></g>
-          <path class="moon" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>
+          <g class="sun">
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" />
+          </g>
+          <path class="moon" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
         </svg>
       </button>
     </nav>
@@ -45,194 +56,214 @@
   <main class="home">
     <section class="intro" data-reveal>
       <h1>Pick a game</h1>
-      <p>Pen-and-paper classics for two players sharing one screen.</p>
+      <p>Classic two-player games for one screen. Grab a friend, or take on the bot.</p>
     </section>
 
     <ul class="game-list">
       <li data-reveal>
         <a class="game-card" href="games/mega-tic-tac-toe/" data-game="mega-tic-tac-toe" data-accent="x"
-           aria-labelledby="mega-tic-tac-toe-title" aria-describedby="mega-tic-tac-toe-desc">
+          aria-labelledby="mega-tic-tac-toe-title" aria-describedby="mega-tic-tac-toe-desc">
           <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
           <div class="card-body">
             <h2 id="mega-tic-tac-toe-title">Mega Tic-Tac-Toe</h2>
-            <p id="mega-tic-tac-toe-desc">Nine boards in one. The square you pick decides which board your opponent plays in next.</p>
+            <p id="mega-tic-tac-toe-desc">Nine boards in one. The square you pick decides which board your opponent
+              plays in next.</p>
             <ul class="chips">
-              <li>2 players</li>
               <li>Strategy</li>
               <li>Rule variants</li>
             </ul>
           </div>
           <span class="card-cta" aria-hidden="true">
             Play
-            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <svg viewBox="0 0 24 24">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
           </span>
         </a>
       </li>
       <li data-reveal>
         <a class="game-card" href="games/tic-tac-toe/" data-game="tic-tac-toe" data-accent="o"
-           aria-labelledby="tic-tac-toe-title" aria-describedby="tic-tac-toe-desc">
+          aria-labelledby="tic-tac-toe-title" aria-describedby="tic-tac-toe-desc">
           <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
           <div class="card-body">
             <h2 id="tic-tac-toe-title">Tic-Tac-Toe</h2>
-            <p id="tic-tac-toe-desc">The classic three in a row. Quick rounds, with the score kept between them.</p>
+            <p id="tic-tac-toe-desc">The classic three in a row. Your score carries over between rounds.</p>
             <ul class="chips">
-              <li>2 players</li>
               <li>Quick rounds</li>
             </ul>
           </div>
           <span class="card-cta" aria-hidden="true">
             Play
-            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <svg viewBox="0 0 24 24">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
           </span>
         </a>
       </li>
       <li data-reveal>
         <a class="game-card" href="games/four-in-a-row/" data-game="four-in-a-row" data-accent="x"
-           aria-labelledby="four-in-a-row-title" aria-describedby="four-in-a-row-desc">
+          aria-labelledby="four-in-a-row-title" aria-describedby="four-in-a-row-desc">
           <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
           <div class="card-body">
             <h2 id="four-in-a-row-title">Four in a Row</h2>
-            <p id="four-in-a-row-desc">Drop discs into the columns. Line up four across, down or diagonally before your opponent does.</p>
+            <p id="four-in-a-row-desc">Drop discs into the columns. Line up four across, down or diagonally before your
+              opponent does.</p>
             <ul class="chips">
-              <li>2 players</li>
               <li>Quick rounds</li>
             </ul>
           </div>
           <span class="card-cta" aria-hidden="true">
             Play
-            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <svg viewBox="0 0 24 24">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
           </span>
         </a>
       </li>
       <li data-reveal>
         <a class="game-card" href="games/dots-and-boxes/" data-game="dots-and-boxes" data-accent="o"
-           aria-labelledby="dots-and-boxes-title" aria-describedby="dots-and-boxes-desc">
+          aria-labelledby="dots-and-boxes-title" aria-describedby="dots-and-boxes-desc">
           <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
           <div class="card-body">
             <h2 id="dots-and-boxes-title">Dots and Boxes</h2>
-            <p id="dots-and-boxes-desc">Take turns joining dots. Close a box to claim it and go again. Most boxes wins.</p>
+            <p id="dots-and-boxes-desc">Take turns joining dots. Close a box to claim it and go again. Most boxes wins.
+            </p>
             <ul class="chips">
-              <li>2 players</li>
-              <li>Pen and paper</li>
+              <li>Quick rounds</li>
             </ul>
           </div>
           <span class="card-cta" aria-hidden="true">
             Play
-            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <svg viewBox="0 0 24 24">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
           </span>
         </a>
       </li>
       <li data-reveal>
-        <a class="game-card" href="games/gomoku/" data-game="gomoku" data-accent="x"
-           aria-labelledby="gomoku-title" aria-describedby="gomoku-desc">
+        <a class="game-card" href="games/gomoku/" data-game="gomoku" data-accent="x" aria-labelledby="gomoku-title"
+          aria-describedby="gomoku-desc">
           <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
           <div class="card-body">
             <h2 id="gomoku-title">Gomoku</h2>
             <p id="gomoku-desc">Five in a row on a 15×15 grid. Easy to learn, with plenty of room to set traps.</p>
             <ul class="chips">
-              <li>2 players</li>
               <li>Strategy</li>
             </ul>
           </div>
           <span class="card-cta" aria-hidden="true">
             Play
-            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <svg viewBox="0 0 24 24">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
           </span>
         </a>
       </li>
       <li data-reveal>
-        <a class="game-card" href="games/notakto/" data-game="notakto" data-accent="o"
-           aria-labelledby="notakto-title" aria-describedby="notakto-desc">
+        <a class="game-card" href="games/notakto/" data-game="notakto" data-accent="o" aria-labelledby="notakto-title"
+          aria-describedby="notakto-desc">
           <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
           <div class="card-body">
             <h2 id="notakto-title">Notakto</h2>
-            <p id="notakto-desc">Tic-tac-toe where you both play X. Complete a line on the last live board and you lose.</p>
+            <p id="notakto-desc">Tic-tac-toe on several boards, and you both play X. A line closes a board. Close the
+              last one and you lose.</p>
             <ul class="chips">
-              <li>2 players</li>
               <li>Quick rounds</li>
               <li>Twist</li>
             </ul>
           </div>
           <span class="card-cta" aria-hidden="true">
             Play
-            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <svg viewBox="0 0 24 24">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
           </span>
         </a>
       </li>
       <li data-reveal>
         <a class="game-card" href="games/order-and-chaos/" data-game="order-and-chaos" data-accent="x"
-           aria-labelledby="order-and-chaos-title" aria-describedby="order-and-chaos-desc">
+          aria-labelledby="order-and-chaos-title" aria-describedby="order-and-chaos-desc">
           <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
           <div class="card-body">
             <h2 id="order-and-chaos-title">Order and Chaos</h2>
-            <p id="order-and-chaos-desc">One player builds five in a row, the other spoils it, and both can play X or O.</p>
+            <p id="order-and-chaos-desc">One player builds five in a row, the other tries to stop it, and both can play
+              X or O.
+            </p>
             <ul class="chips">
-              <li>2 players</li>
               <li>Asymmetric</li>
             </ul>
           </div>
           <span class="card-cta" aria-hidden="true">
             Play
-            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <svg viewBox="0 0 24 24">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
           </span>
         </a>
       </li>
       <li data-reveal>
-        <a class="game-card" href="games/hex/" data-game="hex" data-accent="o"
-           aria-labelledby="hex-title" aria-describedby="hex-desc">
+        <a class="game-card" href="games/hex/" data-game="hex" data-accent="o" aria-labelledby="hex-title"
+          aria-describedby="hex-desc">
           <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
           <div class="card-body">
             <h2 id="hex-title">Hex</h2>
-            <p id="hex-desc">Place stones on a board of hexagons. Join your two sides before your opponent joins theirs. There are no draws.</p>
+            <p id="hex-desc">Place stones on a board of hexagons. Connect your two edges of the board before your
+              opponent connects theirs.
+              There are no draws.</p>
             <ul class="chips">
-              <li>2 players</li>
               <li>Strategy</li>
             </ul>
           </div>
           <span class="card-cta" aria-hidden="true">
             Play
-            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <svg viewBox="0 0 24 24">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
           </span>
         </a>
       </li>
       <li data-reveal>
         <a class="game-card" href="games/nine-mens-morris/" data-game="nine-mens-morris" data-accent="x"
-           aria-labelledby="nine-mens-morris-title" aria-describedby="nine-mens-morris-desc">
+          aria-labelledby="nine-mens-morris-title" aria-describedby="nine-mens-morris-desc">
           <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
           <div class="card-body">
             <h2 id="nine-mens-morris-title">Nine Men’s Morris</h2>
-            <p id="nine-mens-morris-desc">Place nine pieces each, then move them. Line up three to form a mill and take one of your opponent’s pieces.</p>
+            <p id="nine-mens-morris-desc">Place nine pieces each, then move them. Line up three to form a mill and take
+              one of your opponent’s pieces.</p>
             <ul class="chips">
-              <li>2 players</li>
               <li>Strategy</li>
-              <li>Classic</li>
             </ul>
           </div>
           <span class="card-cta" aria-hidden="true">
             Play
-            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <svg viewBox="0 0 24 24">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
           </span>
         </a>
       </li>
       <li data-reveal>
-        <a class="game-card" href="games/reversi/" data-game="reversi" data-accent="o"
-           aria-labelledby="reversi-title" aria-describedby="reversi-desc">
+        <a class="game-card" href="games/reversi/" data-game="reversi" data-accent="o" aria-labelledby="reversi-title"
+          aria-describedby="reversi-desc">
           <div class="card-art" aria-hidden="true"><svg class="preview"></svg></div>
           <div class="card-body">
             <h2 id="reversi-title">Reversi</h2>
-            <p id="reversi-desc">Trap your opponent's discs between yours to flip them. Most discs when the board locks up wins.</p>
+            <p id="reversi-desc">Trap your opponent’s discs between yours to flip them. Most discs when the board locks
+              up wins.</p>
             <ul class="chips">
-              <li>2 players</li>
               <li>Strategy</li>
             </ul>
           </div>
           <span class="card-cta" aria-hidden="true">
             Play
-            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <svg viewBox="0 0 24 24">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
           </span>
         </a>
       </li>
     </ul>
   </main>
 </body>
+
 </html>
