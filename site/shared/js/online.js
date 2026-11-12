@@ -58,8 +58,8 @@ export function createOnline({
         <p class="sheet-text">Send this code to your friend. They choose <strong>Online friend → Join a friend’s room</strong>.</p>
         <p class="room-code"></p>
         <div class="room-links">
-          <button type="button" class="btn" data-act="copy">Copy</button>
-          <button type="button" class="btn" data-act="share">Share</button>
+          <button type="button" class="btn" data-act="copy">Copy link</button>
+          <button type="button" class="btn" data-act="share">Share link</button>
         </div>
       </div>
       <label class="room-join">
@@ -95,7 +95,7 @@ export function createOnline({
     try {
       await navigator.clipboard.writeText(invite());
       e.target.textContent = 'Copied';
-      setTimeout(() => { e.target.textContent = 'Copy'; }, 1500);
+      setTimeout(() => { e.target.textContent = 'Copy link'; }, 1500);
     } catch {
       shake(e.target);
     }
