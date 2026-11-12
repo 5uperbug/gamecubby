@@ -5,7 +5,7 @@
 
 import {
   X, O, ORDER, CHAOS, P1, P2, SIDE, CELL_COUNT,
-  createRound, play, replayRound, undo as undoRound, threats,
+  createRound, isLegal, play, replayRound, undo as undoRound, threats,
   roleOf, playerFor, roundWinner, rowOf, colOf,
 } from './game.js';
 import {
@@ -22,6 +22,7 @@ import {
   OPPONENTS, isBot, pickMove, think,
 } from '../../shared/js/bot.js';
 import { labelPlayers, setupWizard } from '../../shared/js/opponent.js';
+import { createOnline } from '../../shared/js/online.js';
 import bot from './bot.js';
 import { initThemeToggle } from '../../shared/js/theme.js';
 
@@ -37,8 +38,8 @@ const BOT = P2; // the bot is always Player 2, so it swaps roles with you every 
 
 const freshMatch = (opponent = 'human') => ({ scores: { [P1]: 0, [P2]: 0 }, roundNo: 1, opponent });
 
-function loadMatch() {
-  const saved = store.get('match');
+/** Reads a saved match (also the host's state in an online sync), keeping only valid fields. */
+function loadMatch(saved = store.get('match')) {
   const match = freshMatch();
   if (!saved || typeof saved !== 'object') return { match, moves: [] };
   for (const p of [P1, P2]) {
@@ -64,9 +65,15 @@ const ui = {
 
 const vsBot = () => isBot(match.opponent);
 const botsTurn = () => vsBot() && !round.winner && playerFor(round.turn, match.roundNo) === BOT;
+const vsRemote = () => match.opponent === 'remote';
+/** The online friend is to move, or the room isn't ready: this screen waits. */
+const friendsTurn = () => vsRemote() && !round.winner && (!online.ready || playerFor(round.turn, match.roundNo) === online.theirs);
+const waiting = () => botsTurn() || friendsTurn();
+const idle = async () => { while (ui.busy) await think(40); };
 
 /** Moves to take back so it is a person's turn again (0 if there are none). */
 function undoSteps() {
+  if (vsRemote()) return 0;
   if (!vsBot()) return round.moves.length ? 1 : 0;
   let r = round;
   for (let n = 1; n <= round.moves.length; n += 1) {
@@ -227,7 +234,7 @@ function clearSelection() {
 }
 
 function select(c, byBot = false) {
-  if (ui.busy || (!byBot && botsTurn())) return;
+  if (ui.busy || (!byBot && waiting())) return;
   if (round.winner) {
     // The round is over: point at the way forward.
     shake($('#hint'));
@@ -272,26 +279,34 @@ function followFocus() {
 
 const pills = [...document.querySelectorAll('.player')];
 
-const who = (player) => `<strong>${NAMES[player]}</strong>`;
+const isYou = (player) => vsRemote() && player === online.mine;
+const who = (player) => `<strong>${isYou(player) ? 'You' : NAMES[player]}</strong>`;
+const wins = (player) => `${who(player)} ${isYou(player) ? 'win' : 'wins'}`;
 const roleTag = (role) => `<strong class="${role}">${ROLE_NAMES[role]}</strong>`;
 const symbols = `<strong class="x">X</strong> or <strong class="o">O</strong>`;
 
 function hintFor() {
+  const net = vsRemote() && online.hint();
+  if (net) return net;
   const n = match.roundNo;
   if (round.winner === ORDER) {
-    return `Five in a row! ${who(roundWinner(round, n))} wins round ${n} as ${roleTag(ORDER)}.`;
+    return `Five in a row! ${wins(roundWinner(round, n))} round ${n} as ${roleTag(ORDER)}.`;
   }
   if (round.winner === CHAOS) {
-    return `The board is full with no five. ${who(roundWinner(round, n))} wins round ${n} as ${roleTag(CHAOS)}.`;
+    return `The board is full with no five. ${wins(roundWinner(round, n))} round ${n} as ${roleTag(CHAOS)}.`;
   }
   const player = who(playerFor(round.turn, n));
   const role = roleTag(round.turn);
+  if (friendsTurn()) return `Your friend (${role}) is thinking…`;
   if (botsTurn()) return `${player} (bot, ${role}) is thinking…`;
   if (ui.selected !== null) {
     const c = ui.selected;
     return `${player} (${role}): choose ${symbols} for row ${rowOf(c) + 1}, column ${colOf(c) + 1}.`;
   }
-  if (!round.moves.length) return `Round ${n}: ${player} is ${role} and goes first. Tap a square.`;
+  if (!round.moves.length) {
+    if (isYou(playerFor(round.turn, n))) return `Round ${n}: you’re ${role} and go first. Tap a square.`;
+    return `Round ${n}: ${player} is ${role} and goes first. Tap a square.`;
+  }
   if (round.turn === ORDER) return `${player} (${role}): line up five. Tap a square.`;
   return `${player} (${role}): block the five. Tap a square.`;
 }
@@ -316,7 +331,7 @@ function refresh({ holdScores = false } = {}) {
   document.body.classList.toggle('turn-chaos', role === CHAOS);
 
   setRoles();
-  labelPlayers(vsBot() && BOT);
+  labelPlayers(vsBot() ? BOT : vsRemote() && online.theirs, vsRemote() ? 'Friend' : 'Bot');
   for (const pill of pills) {
     const on = pill.dataset.player === active;
     pill.classList.toggle('active', on);
@@ -350,9 +365,9 @@ function refresh({ holdScores = false } = {}) {
   $('#btn-o').disabled = !canPlace;
   $('#btn-undo').disabled = ui.busy || !undoSteps();
   const next = $('#btn-round');
-  next.disabled = ui.busy || !round.moves.length;
+  next.disabled = ui.busy || !round.moves.length || (vsRemote() && !online.host);
   next.classList.toggle('quiet', !over);
-  board.classList.toggle('live', !over && !ui.busy && !botsTurn());
+  board.classList.toggle('live', !over && !ui.busy && !waiting());
   labelCells();
 }
 
@@ -486,7 +501,8 @@ async function swapRoles() {
 // -------------------------------------------------------------------- flow
 
 async function place(symbol, how) {
-  if (ui.busy || (how !== 'bot' && botsTurn())) return;
+  const remote = how === 'bot' || how === 'remote';
+  if (ui.busy || (!remote && waiting())) return;
   if (round.winner) {
     // The round is over: point at the way forward.
     shake($('#hint'));
@@ -500,6 +516,7 @@ async function place(symbol, how) {
   }
   ui.busy = true;
   round = play(round, c, symbol);
+  if (vsRemote() && !remote) online.send({ cell: c, symbol });
   clearSelection();
   const winner = roundWinner(round, match.roundNo);
   if (winner) match.scores[winner] += 1;
@@ -542,7 +559,7 @@ async function botTurn() {
 }
 
 async function newRound(how) {
-  if (ui.busy || !round.moves.length) return;
+  if (ui.busy || !round.moves.length || (vsRemote() && !online.host)) return;
   ui.busy = true;
   clearSelection();
   refresh();
@@ -555,6 +572,7 @@ async function newRound(how) {
   ui.busy = false;
   refresh();
   if (how === 'keyboard') board.querySelector('.cell[tabindex="0"]').focus();
+  if (vsRemote()) online.sync();
   botTurn();
 }
 
@@ -585,6 +603,7 @@ async function undoMove(how) {
 
 async function newMatch(opponent) {
   if (ui.busy) return;
+  if (opponent !== 'remote') online.leave();
   ui.busy = true;
   clearSelection();
   refresh();
@@ -597,8 +616,37 @@ async function newMatch(opponent) {
   if (swapping) await swapRoles();
   ui.busy = false;
   refresh();
+  if (vsRemote()) online.sync();
   botTurn();
 }
+
+// ------------------------------------------------------------------ online
+
+const online = createOnline({
+  game: 'order-and-chaos',
+  marks: [P1, P2],
+  begin: async () => { await idle(); await newMatch('remote'); },
+  end: async (opponent) => { await idle(); await newMatch(opponent); },
+  snapshot: () => ({ ...match, moves: round.moves }),
+  async onSync(state) {
+    await idle();
+    const loaded = loadMatch(state);
+    if (loaded.match.roundNo !== match.roundNo) await sweep();
+    clearSelection();
+    match = { ...loaded.match, opponent: 'remote' };
+    round = replayRound(loaded.moves);
+    save();
+    sync();
+    refresh();
+  },
+  async onMove(m) {
+    await idle();
+    if (!friendsTurn() || !m || !isLegal(round, m.cell, m.symbol)) return;
+    select(m.cell, true);
+    place(m.symbol, 'remote');
+  },
+  onChange: () => refresh(),
+});
 
 // ------------------------------------------------------------------- input
 
@@ -650,7 +698,9 @@ function fillMatchForm() {
 function startFromForm() {
   prefs = { threats: matchForm.threats.checked };
   store.set('prefs', prefs);
-  newMatch(matchForm.elements.opponent.value);
+  const opponent = matchForm.elements.opponent.value;
+  if (opponent === 'remote') online.start(matchForm.elements.room.value);
+  else newMatch(opponent);
 }
 $('#btn-match').addEventListener('click', () => {
   fillMatchForm();
@@ -686,13 +736,20 @@ document.addEventListener('keydown', (e) => {
 
 async function boot() {
   initThemeToggle($('#btn-theme'));
+  // An online match only survives a refresh of the same tab (online.js keeps the room).
+  const resumed = online.resume(vsRemote());
+  if (vsRemote() && !resumed) {
+    match = freshMatch();
+    round = createRound();
+    save();
+  }
   setRoving(0);
   sync();
   ui.busy = true;
   refresh();
   reveal(document.querySelectorAll('[data-reveal]'));
   // Nothing played yet in this match: start with the setup wizard, over the intro.
-  if (!round.moves.length && match.roundNo === 1 && !Object.values(match.scores).some(Boolean)) $('#btn-match').click();
+  if (!resumed && !round.moves.length && match.roundNo === 1 && !Object.values(match.scores).some(Boolean)) $('#btn-match').click();
   await intro();
   ui.busy = false;
   refresh();

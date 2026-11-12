@@ -11,7 +11,7 @@
 // Minimax rather than negamax: in some games the same side moves twice in a
 // row (a completed box, an opponent who must pass, a mill's removal).
 
-export const OPPONENTS = ['human', 'easy', 'hard'];
+export const OPPONENTS = ['human', 'easy', 'hard', 'remote']; // 'remote': an online friend (online.js)
 export const isBot = (opponent) => opponent === 'easy' || opponent === 'hard';
 
 /** adapter.outcome for games with a `winner` field that is null, a player, or a draw marker. */

@@ -1,7 +1,7 @@
 # Game Cubby
 
-Pen-and-paper games for two players sharing one screen, or one player against
-a bot. A static site of plain
+Pen-and-paper games for two players sharing one screen, two friends on their
+own devices, or one player against a bot. A static site of plain
 HTML, CSS and ES modules that runs unbuilt in development; the deploy is
 bundled and minified with esbuild and published to GitHub Pages.
 
@@ -103,6 +103,9 @@ cross and Blue discs a ring, and the mark changes as a disc flips.
   round; in Order and Chaos it swaps roles with you each round. Undo takes
   back the bot's reply as well as your move, and switching opponent resets
   the score. See [Bot](#bot) for how it plays and where Hard is weak.
+- Online play with a friend: pick **Online friend**, then **Create a room**
+  and send your friend the 4-character code (or the Share link), or **Join a
+  friend's room** and type theirs. See [Online play](#online-play).
 - Light and dark themes: the first visit follows the system setting, and the
   toggle saves your choice for the whole site.
 - Responsive layout: stacked on phones, board plus side panel in landscape
@@ -134,6 +137,30 @@ Known limits of Hard (each marked with a `ponytail:` comment in its file):
   are guesses; it is exact once the boards fill up.
 - **Gomoku:** under **Exactly five**, its scoring ignores lines of six (the
   rules still decide the winner).
+
+## Online play
+
+Two browsers play directly over a WebRTC data channel; there is no game
+server. [Trystero](https://github.com/dmotz/trystero) finds the other player
+through public Nostr relays (the handshake is encrypted with the room code),
+then gets out of the way. Its 74 KB load only when someone goes online.
+
+- **The host owns the match.** Whoever creates the room picks the options,
+  flips the coin for sides, and starts each new round. It sends its whole
+  match on every (re)connect and new round; the guest reads it through the
+  game's own `loadMatch` validation. Moves go both ways and replay through
+  `isLegal`, so a bad message can't corrupt a board.
+- **Refresh-safe.** The room is kept in `sessionStorage`, so reloading a tab
+  rejoins the room and resyncs. A new tab or a closed one starts fresh.
+- **No undo** online, and only the host starts the next round or game.
+- **Limits.** Connections use STUN only. On some networks (strict NAT,
+  corporate Wi-Fi) the two browsers can't reach each other, and the join
+  dialog says so; adding a TURN server to `openRoom` in `shared/js/net.js` is
+  the fix if that comes up. Rooms are for friends: anyone with the code can
+  take the second seat.
+- **Hosting.** Pages must be served over HTTPS (WebRTC needs it). If the
+  domain is proxied through Cloudflare, keep SSL on **Full** and Rocket
+  Loader off.
 
 ## Repository structure
 
@@ -177,14 +204,20 @@ site/                        ← the website (source of dist/)
     js/disc.js               disc drawing and the drop, for the disc games
     js/bot.js                the bot's search, shared by every game (no DOM)
     js/opponent.js           turns a New game dialog into the wizard
-                             (Opponent, then options), and the You/Bot names
+                             (Opponent, then options or Create/Join), and
+                             the You/Bot/Friend names
+    js/online.js             online play UI: room dialog, connection bar,
+                             rejoin after refresh, #join=CODE links
+    js/net.js                room codes, message shapes, Trystero room
   vendor/animejs/            anime.js 4.5.0 ESM bundle (MIT)
+  vendor/trystero/           Trystero 0.26.0 (Nostr), bundled to one ESM file (MIT)
 tests/
   mega-tic-tac-toe.test.js   Mega rules
   tic-tac-toe.test.js        classic rules and the shared 3×3 core
   <slug>.test.js             rules for each of the other games
   bot.test.js                every bot plays legal moves, takes wins, blocks
                              losses, and thinks fast enough
+  net.test.js                room codes and online message checks
   site.test.js               every link and import resolves; every game has
                              a home page card and preview, and links back
 scripts/build.js             builds dist/ from site/ (esbuild)
@@ -201,6 +234,11 @@ scripts/build.js             builds dist/ from site/ (esbuild)
   vendored bundle; the build swaps in the npm `animejs` package so it
   tree-shakes. Upgrading means replacing `site/vendor/animejs/` and bumping
   `devDependencies.animejs` to the same version (a test checks they match).
+- **Trystero is vendored as one file.** Its npm package spans several
+  packages, so `site/vendor/trystero/trystero.min.js` is an esbuild bundle of
+  it. To upgrade, bump `devDependencies.trystero`, then rebuild the file
+  (a test checks the banner version):
+  `npx esbuild node_modules/trystero/dist/index.mjs --bundle --format=esm --minify --legal-comments=inline --banner:js="/*! trystero <version> | MIT | https://github.com/dmotz/trystero */" --outfile=site/vendor/trystero/trystero.min.js`
 - **Saved data is namespaced.** All of `5uperbug.github.io` is one origin, so
   keys look like `gamecubby:<slug>:<key>` (via `createStore('<slug>')`). The
   theme is stored under `gamecubby:theme`.
@@ -221,6 +259,9 @@ scripts/build.js             builds dist/ from site/ (esbuild)
    into `app.js` the way `games/tic-tac-toe/app.js` does: `botTurn()` after
    every move and new round, `undoSteps()` for undo, and
    `setupWizard()` on the dialog's form. Add the game to `tests/bot.test.js`.
+   For online play, follow the same file's `online` block: `createOnline()`
+   with the game's marks, `online.send()` after a local move, `waiting()`
+   wherever the bot's turn blocks input, and `online.resume()` in `boot()`.
 5. Add `preview.js` exporting `buildPreview(svg)`, which draws the card art
    and returns `{ hide, intro, enter, leave }`. The contract is described at
    the top of `home.js`.

@@ -13,6 +13,7 @@ import {
   OPPONENTS, isBot, pickMove, think,
 } from '../../shared/js/bot.js';
 import { labelPlayers, setupWizard } from '../../shared/js/opponent.js';
+import { createOnline } from '../../shared/js/online.js';
 import bot from './bot.js';
 import { initThemeToggle } from '../../shared/js/theme.js';
 
@@ -40,9 +41,17 @@ let state = loadGame();
 
 const vsBot = () => isBot(opponent);
 const botsTurn = () => vsBot() && !state.winner && state.turn === BOT;
+const vsRemote = () => opponent === 'remote';
+/** The online friend is to move, or the room isn't ready: this screen waits. */
+const friendsTurn = () => vsRemote() && !state.winner && (!online.ready || state.turn === online.theirs);
+const waiting = () => botsTurn() || friendsTurn();
+/** Only the host starts the next game of an online match. */
+const guest = () => vsRemote() && !online.host;
+const idle = async () => { while (ui.busy) await think(40); };
 
 /** Moves to take back so it is a person's turn again (0 if there are none). */
 function undoSteps() {
+  if (vsRemote()) return 0;
   if (!vsBot()) return state.history.length ? 1 : 0;
   let s = state;
   for (let n = 1; n <= state.history.length; n += 1) {
@@ -52,8 +61,8 @@ function undoSteps() {
   return 0;
 }
 
-function loadGame() {
-  const saved = store.get('game');
+/** Reads a saved game (also the host's state in an online sync), keeping only valid moves. */
+function loadGame(saved = store.get('game')) {
   if (saved && Array.isArray(saved.moves)) {
     const moves = saved.moves
       .filter((m) => Array.isArray(m) && m.length === 2)
@@ -75,13 +84,18 @@ const tag = (p) => `<strong class="${p.toLowerCase()}">${p}</strong>`;
 const where = (b) => `<strong>${POSITION_NAMES[b]}</strong>`;
 
 function hintFor() {
-  if (state.winner === DRAW) return 'It’s a draw — nobody can complete a line of boards.';
-  if (state.winner) return `${tag(state.winner)} wins the game!`;
+  const net = vsRemote() && online.hint();
+  if (net) return net;
+  const after = guest() ? ' Your friend starts the next game.' : '';
+  if (state.winner === DRAW) return `It’s a draw — nobody can complete a line of boards.${after}`;
+  if (state.winner) return `${tag(state.winner)} wins the game!${after}`;
   if (ui.committing) {
     const { player, board, cell } = ui.committing;
     return `${tag(player)} played the ${POSITION_NAMES[cell]} cell of the ${where(board)} board.`;
   }
   const p = tag(state.turn);
+  if (friendsTurn()) return `${p} (your friend) is ${ui.pending ? 'playing here' : 'thinking'}…`;
+  if (vsRemote() && !state.history.length && ui.mode === 'overview') return `You’re ${p}, and you go first. Pick any board to zoom in.`;
   if (botsTurn()) return `${tag(BOT)} (bot) is ${ui.pending ? 'playing here' : 'thinking'}…`;
   if (ui.mode === 'zoom') {
     if (ui.pending) return `${p}: confirm your move, or tap another cell.`;
@@ -111,7 +125,7 @@ function refresh() {
   document.body.classList.toggle('rules-open', state.rules.openBoards);
   document.body.classList.toggle('game-over', over);
 
-  labelPlayers(vsBot() && BOT);
+  labelPlayers(vsBot() ? BOT : vsRemote() && online.theirs, vsRemote() ? 'Friend' : 'Bot');
   for (const pill of document.querySelectorAll('.player')) {
     const active = over ? pill.dataset.player === state.winner : pill.dataset.player === state.turn;
     pill.classList.toggle('active', active);
@@ -140,7 +154,8 @@ function refresh() {
   $('#rules-note').textContent = state.rules.openBoards ? 'Rules: open boards variant' : 'Rules: classic';
   $('#btn-undo').disabled = ui.busy || !undoSteps();
   $('#btn-back').disabled = ui.busy || ui.mode !== 'zoom';
-  $('#btn-confirm').disabled = ui.busy || !ui.pending;
+  $('#btn-confirm').disabled = ui.busy || !ui.pending || waiting();
+  $('#btn-again').disabled = guest();
   view.labelBoards(state, ui.mode === 'overview' ? playableBoards(state) : []);
 }
 
@@ -148,7 +163,7 @@ function refresh() {
 
 async function onBoard(b, how) {
   ui.keyboard = how === 'keyboard';
-  if (ui.busy || state.winner || botsTurn()) return;
+  if (ui.busy || state.winner || waiting()) return;
   if (!playableBoards(state).includes(b)) {
     view.shake(b);
     shake($('#hint'));
@@ -174,7 +189,7 @@ async function zoomIn(b) {
 
 function onCell(b, c, how) {
   ui.keyboard = how === 'keyboard';
-  if (ui.busy || ui.mode !== 'zoom' || b !== ui.board || botsTurn()) return;
+  if (ui.busy || ui.mode !== 'zoom' || b !== ui.board || waiting()) return;
   if (!isLegalMove(state, b, c)) {
     view.shakeCell(b, c);
     return;
@@ -188,7 +203,7 @@ function onCell(b, c, how) {
   if (ui.keyboard) $('#btn-confirm').focus();
 }
 
-async function confirmMove() {
+async function confirmMove(how) {
   if (ui.busy || !ui.pending) return;
   const { b, c } = ui.pending;
   ui.busy = true;
@@ -198,6 +213,7 @@ async function confirmMove() {
 
   const { state: next, events } = applyMove(state, b, c);
   state = next;
+  if (vsRemote() && how !== 'remote') online.send([b, c]);
   saveGame();
 
   await view.commit(events);
@@ -309,6 +325,7 @@ async function undoMove() {
 
 async function newGame(rules, against = opponent) {
   if (ui.busy) return;
+  if (against !== 'remote') online.leave();
   ui.busy = true;
   hideResult(false);
   view.clearPending();
@@ -330,8 +347,60 @@ async function newGame(rules, against = opponent) {
   await view.highlight(playableBoards(state), state.turn);
   ui.busy = false;
   refresh();
+  if (vsRemote()) online.sync();
   botTurn();
 }
+
+// ------------------------------------------------------------------ online
+
+const online = createOnline({
+  game: 'mega-tic-tac-toe',
+  marks: [X, O],
+  begin: async () => { await idle(); await newGame({ openBoards: newForm.variant.value === 'open' }, 'remote'); },
+  end: async (against) => { await idle(); await newGame(state.rules, against); },
+  snapshot: () => ({ rules: state.rules, moves: state.history.map((m) => [m.board, m.cell]), opponent }),
+  async onSync(snap) {
+    await idle();
+    const next = loadGame(snap);
+    ui.busy = true;
+    hideResult(false);
+    view.clearPending();
+    ui.pending = null;
+    if (ui.mode === 'zoom') {
+      ui.mode = 'overview';
+      ui.board = null;
+      await view.zoomOut();
+    }
+    view.clearHighlight();
+    if (next.history.length < state.history.length) await view.clearAway();
+    state = next;
+    opponent = 'remote';
+    saveGame();
+    view.sync(state);
+    await view.highlight(playableBoards(state), state.turn);
+    ui.busy = false;
+    refresh();
+    if (state.winner) showResult();
+  },
+  /** Plays the friend's move the way the bot's shows: zoom in, place, confirm. */
+  async onMove(m) {
+    await idle();
+    if (!Array.isArray(m) || !friendsTurn() || !isLegalMove(state, m[0], m[1])) return;
+    const [b, c] = m;
+    ui.busy = true;
+    ui.mode = 'zoom';
+    ui.board = b;
+    refresh();
+    await view.zoomIn(b);
+    ui.pending = { b, c };
+    view.showPending(b, c, state.turn);
+    refresh();
+    await wait(300);
+    ui.busy = false;
+    confirmMove('remote');
+  },
+  onChange: () => refresh(),
+});
 
 // ------------------------------------------------------------------ result
 
@@ -387,6 +456,10 @@ function fillNewForm() {
 function startFromForm() {
   prefs = { ...prefs, autoZoom: newForm.autozoom.checked };
   store.set('prefs', prefs);
+  if (newForm.elements.opponent.value === 'remote') {
+    online.start(newForm.elements.room.value);
+    return;
+  }
   newGame({ openBoards: newForm.variant.value === 'open' }, newForm.elements.opponent.value);
 }
 
@@ -411,7 +484,7 @@ $('#btn-back').addEventListener('click', (e) => {
   backToOverview();
 });
 $('#btn-undo').addEventListener('click', undoMove);
-$('#btn-again').addEventListener('click', () => newGame(state.rules));
+$('#btn-again').addEventListener('click', () => !guest() && newGame(state.rules));
 $('#btn-review').addEventListener('click', () => hideResult(true));
 
 document.addEventListener('keydown', (e) => {
@@ -434,12 +507,19 @@ document.addEventListener('keydown', (e) => {
 
 async function boot() {
   initThemeToggle($('#btn-theme'));
+  // An online match only survives a refresh of the same tab (online.js keeps the room).
+  const resumed = online.resume(vsRemote());
+  if (vsRemote() && !resumed) {
+    state = createGame(state.rules);
+    opponent = 'human';
+    saveGame();
+  }
   view.sync(state);
   ui.busy = true;
   refresh();
   reveal(document.querySelectorAll('[data-reveal]'));
   // Nothing played yet in this match: start with the setup wizard, over the intro.
-  if (!state.history.length) $('#btn-new').click();
+  if (!resumed && !state.history.length) $('#btn-new').click();
   await view.intro();
   await view.highlight(playableBoards(state), state.turn);
   ui.busy = false;

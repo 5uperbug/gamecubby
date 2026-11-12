@@ -19,6 +19,7 @@ import {
   OPPONENTS, isBot, pickMove, think,
 } from '../../shared/js/bot.js';
 import { labelPlayers, setupWizard } from '../../shared/js/opponent.js';
+import { createOnline } from '../../shared/js/online.js';
 import bot from './bot.js';
 import { initThemeToggle } from '../../shared/js/theme.js';
 
@@ -34,8 +35,8 @@ const BOT = O; // the bot always plays Blue
 
 const freshWins = () => ({ X: 0, O: 0 });
 
-function loadMatch() {
-  const saved = store.get('match');
+/** Reads a saved match (also the host's state in an online sync), keeping only valid fields. */
+function loadMatch(saved = store.get('match')) {
   const wins = freshWins();
   if (!saved || typeof saved !== 'object') return { wins, game: createGame(), opponent: 'human' };
   for (const key of Object.keys(wins)) {
@@ -52,9 +53,17 @@ let { wins, game, opponent } = loaded;
 
 const vsBot = () => isBot(opponent);
 const botsTurn = () => vsBot() && !game.winner && game.turn === BOT;
+const vsRemote = () => opponent === 'remote';
+/** The online friend is to move, or the room isn't ready: this screen waits. */
+const friendsTurn = () => vsRemote() && !game.winner && (!online.ready || game.turn === online.theirs);
+const waiting = () => botsTurn() || friendsTurn();
+/** Only the host starts the next game of an online match. */
+const guest = () => vsRemote() && !online.host;
+const idle = async () => { while (ui.busy) await think(40); };
 
 /** Moves to take back so it is a person's turn again (0 if there are none). */
 function undoSteps() {
+  if (vsRemote()) return 0;
   if (!vsBot()) return game.moves.length ? 1 : 0;
   let g = game;
   for (let n = 1; n <= game.moves.length; n += 1) {
@@ -185,10 +194,14 @@ function neighbourFor(cell, key) {
 const tag = (p) => `<strong class="${p.toLowerCase()}">${NAMES[p]}</strong>`;
 
 function hintFor() {
+  const net = vsRemote() && online.hint();
+  if (net) return net;
   if (game.winner) {
-    return `${tag(game.winner)} connects ${GOAL[game.winner]} in ${game.moves.length} moves!`;
+    return `${tag(game.winner)} connects ${GOAL[game.winner]} in ${game.moves.length} moves!${guest() ? ' Your friend starts the next game.' : ''}`;
   }
   const p = tag(game.turn);
+  if (friendsTurn()) return `${p} (your friend) is thinking…`;
+  if (vsRemote() && !game.moves.length) return `You’re ${p}, and you go first. Tap any empty hexagon to place a stone.`;
   if (botsTurn()) return `${tag(BOT)} (bot) is thinking…`;
   if (!game.moves.length) return `${p} goes first. Tap any empty hexagon to place a stone.`;
   const last = lastCell(game);
@@ -208,7 +221,7 @@ function refresh({ holdScores = false } = {}) {
   document.body.classList.toggle('turn-o', active === O);
   document.body.classList.toggle('turn-x', active === X);
 
-  labelPlayers(vsBot() && BOT);
+  labelPlayers(vsBot() ? BOT : vsRemote() && online.theirs, vsRemote() ? 'Friend' : 'Bot');
   for (const pill of document.querySelectorAll('.player')) {
     const on = pill.dataset.player === active;
     pill.classList.toggle('active', on);
@@ -236,10 +249,11 @@ function refresh({ holdScores = false } = {}) {
   const n = game.size;
   $('#match-note').textContent = `${n}×${n} board · Red: top to bottom · Blue: left to right`;
   $('#btn-undo').disabled = ui.busy || !undoSteps();
-  $('#btn-swap').hidden = !canSwap(game) || botsTurn();
+  $('#btn-swap').hidden = !canSwap(game) || waiting();
   $('#btn-swap').disabled = ui.busy;
-  $('#btn-play').disabled = ui.busy || !over;
-  board.classList.toggle('live', !over && !ui.busy && !botsTurn());
+  $('#btn-play').disabled = ui.busy || !over || guest();
+  $('#btn-again').disabled = guest();
+  board.classList.toggle('live', !over && !ui.busy && !waiting());
 }
 
 // -------------------------------------------------------------- animations
@@ -320,7 +334,8 @@ async function takeBack(cell) {
 // -------------------------------------------------------------------- flow
 
 async function place(cell, how) {
-  if (ui.busy || (how !== 'bot' && botsTurn())) return;
+  const remote = how === 'bot' || how === 'remote';
+  if (ui.busy || (!remote && waiting())) return;
   if (game.winner) {
     // The game is over: point at the way forward.
     shake($('#hint'));
@@ -333,6 +348,7 @@ async function place(cell, how) {
   }
   ui.busy = true;
   game = play(game, cell);
+  if (vsRemote() && !remote) online.send(cell);
   if (game.winner) wins[game.winner] += 1;
   save();
   setStone(cell, game.cells[cell]);
@@ -366,12 +382,14 @@ async function botTurn() {
 
 /** The second player takes over the first stone: it fades out and reappears mirrored in their colour. */
 async function swapMove(how) {
-  if (ui.busy || !canSwap(game) || (how !== 'bot' && botsTurn())) return;
+  const remote = how === 'bot' || how === 'remote';
+  if (ui.busy || !canSwap(game) || (!remote && waiting())) return;
   ui.busy = true;
   const from = game.moves[0];
   refresh();
   await takeBack(from);
   game = swapGame(game);
+  if (vsRemote() && !remote) online.send(SWAP);
   save();
   const to = lastCell(game);
   setStone(from, null);
@@ -405,6 +423,7 @@ async function undoMove() {
 
 async function newGame(size = game.size, { resetWins = false, swapRule = game.swapRule, against = opponent } = {}) {
   if (ui.busy) return;
+  if (against !== 'remote') online.leave();
   ui.busy = true;
   hideResult(false);
   refresh();
@@ -424,8 +443,47 @@ async function newGame(size = game.size, { resetWins = false, swapRule = game.sw
   await intro();
   ui.busy = false;
   refresh();
+  if (vsRemote()) online.sync();
   botTurn();
 }
+
+// ------------------------------------------------------------------ online
+
+const online = createOnline({
+  game: 'hex',
+  marks: [X, O],
+  begin: async () => {
+    await idle();
+    await newGame(Number(newForm.elements.boardsize.value) || DEFAULT_SIZE, {
+      resetWins: true, swapRule: newForm.elements.swaprule.checked, against: 'remote',
+    });
+  },
+  end: async (against) => { await idle(); await newGame(game.size, { resetWins: true, against }); },
+  snapshot: () => ({
+    wins, size: game.size, starter: game.starter, swapRule: game.swapRule, moves: game.moves, opponent,
+  }),
+  async onSync(state) {
+    await idle();
+    const loaded = loadMatch(state);
+    ui.busy = true;
+    hideResult(false);
+    if (loaded.game.moves.length < game.moves.length || loaded.game.size !== game.size) await sweep();
+    ({ wins, game } = loaded);
+    opponent = 'remote';
+    save();
+    sync();
+    ui.busy = false;
+    refresh();
+    if (game.winner) showResult();
+  },
+  async onMove(move) {
+    await idle();
+    if (!friendsTurn()) return;
+    if (move === SWAP) swapMove('remote');
+    else if (isLegal(game, move)) place(move, 'remote');
+  },
+  onChange: () => refresh(),
+});
 
 // ------------------------------------------------------------------ result
 
@@ -510,8 +568,8 @@ const button = (action) => async (e) => {
 
 $('#btn-undo').addEventListener('click', button(undoMove));
 $('#btn-swap').addEventListener('click', button(() => swapMove()));
-$('#btn-play').addEventListener('click', button(() => newGame()));
-$('#btn-again').addEventListener('click', button(() => newGame()));
+$('#btn-play').addEventListener('click', button(() => !guest() && newGame()));
+$('#btn-again').addEventListener('click', button(() => !guest() && newGame()));
 $('#btn-review').addEventListener('click', async (e) => {
   const keyboard = e.detail === 0;
   await hideResult(true);
@@ -530,6 +588,10 @@ function fillNewForm() {
 }
 
 function startFromForm() {
+  if (newForm.elements.opponent.value === 'remote') {
+    online.start(newForm.elements.room.value);
+    return;
+  }
   const size = Number(newForm.elements.boardsize.value) || DEFAULT_SIZE;
   newGame(size, {
     resetWins: newForm.elements.resetwins.checked,
@@ -565,13 +627,21 @@ document.addEventListener('keydown', (e) => {
 
 async function boot() {
   initThemeToggle($('#btn-theme'));
+  // An online match only survives a refresh of the same tab (online.js keeps the room).
+  const resumed = online.resume(vsRemote());
+  if (vsRemote() && !resumed) {
+    wins = freshWins();
+    game = createGame(game.size, X, game.swapRule);
+    opponent = 'human';
+    save();
+  }
   sync();
   setRoving(game.moves.at(-1) ?? Math.floor(game.cells.length / 2));
   ui.busy = true;
   refresh();
   reveal(document.querySelectorAll('[data-reveal]'));
   // Nothing played yet in this match: start with the setup wizard, over the intro.
-  if (!game.moves.length && !Object.values(wins).some(Boolean)) $('#btn-new').click();
+  if (!resumed && !game.moves.length && !Object.values(wins).some(Boolean)) $('#btn-new').click();
   await intro();
   ui.busy = false;
   refresh();

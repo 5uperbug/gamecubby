@@ -111,3 +111,9 @@ test('the vendored anime.js matches the npm version bundled for deploy', () => {
   const { devDependencies } = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
   assert.equal(devDependencies.animejs, vendored, 'bump site/vendor/animejs and devDependencies.animejs together');
 });
+
+test('the vendored Trystero bundle matches devDependencies', () => {
+  const vendored = readFileSync(join(ROOT, 'site/vendor/trystero/trystero.min.js'), 'utf8').match(/trystero (\S+) \|/)[1];
+  const { devDependencies } = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+  assert.equal(devDependencies.trystero, vendored, 'rebuild site/vendor/trystero and bump devDependencies.trystero together');
+});
